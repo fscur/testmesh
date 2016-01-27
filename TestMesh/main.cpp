@@ -67,6 +67,8 @@ FT_Library freeLib;
 
 std::vector<geometry*> _geometries;
 std::vector<glm::mat4> _modelMatrices;
+std::vector<int> _updatedModelMatricesIndices;
+
 std::vector<material*> _materialsLibrary;
 std::vector<materialData> _materialsLibraryData;
 std::vector<drawMaterialData> _drawMaterials;
@@ -242,8 +244,6 @@ void createCubes()
     addVertex(vertex(glm::vec3(-0.5f, +0.5f, +0.5f), glm::vec2(1.0, 1.0), glm::vec3(0.0, 1.0, 0.0)));
     addVertex(vertex(glm::vec3(+0.5f, +0.5f, +0.5f), glm::vec2(0.0, 1.0), glm::vec3(0.0, 1.0, 0.0)));
     addVertex(vertex(glm::vec3(+0.5f, +0.5f, -0.5f), glm::vec2(0.0, 0.0), glm::vec3(0.0, 1.0, 0.0)));
-
-    //return geometry::create(vertices, indices, _modelMatrices);
 }
 
 material* createMaterial(texture* diffuseTexure, texture* normalTexture)
@@ -743,14 +743,20 @@ void printUniformBlocks()
 
 }
 
-float height = 0.0f;
+float height = 0.1f;
 bool isDecreasingHeight = false;
 
-void updateAllModelMatrices()
+void updateModelMatrices()
 {
-    for(auto &modelMatrix : _modelMatrices)
+    auto size = _modelMatrices.size();
+    for(auto i = 0; i < size; i++)
     {
-        modelMatrix[3][1] += height;
+        int shouldChange = glm::round(randf(0, 1));
+        if(shouldChange)
+        {
+            _modelMatrices[i][3][1] += height;
+            _updatedModelMatricesIndices.push_back(i);
+        }
     }
 
     if(isDecreasingHeight)
@@ -767,7 +773,14 @@ void updateAllModelMatrices()
 void updateModelMatricesBuffer()
 {
     glBindBuffer(GL_ARRAY_BUFFER, _modelMatricesBufferId);
-    glNamedBufferSubData(_modelMatricesBufferId, 0, sizeof(glm::mat4) * _drawCount, &_modelMatrices[0]);
+    auto matrixSize = sizeof(glm::mat4);
+
+    for(auto i = 0; i < _updatedModelMatricesIndices.size(); i++)
+    {
+        auto index = _updatedModelMatricesIndices[i];
+        auto offset = index * matrixSize;
+        glNamedBufferSubData(_modelMatricesBufferId, offset, matrixSize, &_modelMatrices[index]);
+    }
 }
 
 void update()
@@ -786,7 +799,7 @@ void update()
 
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
 
-    updateAllModelMatrices();
+    updateModelMatrices();
 
     stopwatch::MeasureInMilliseconds([&] {
         updateModelMatricesBuffer();
@@ -843,8 +856,8 @@ int main(int argc, char* args[])
 
     _texturesCount = 100;
     _materialsCount = 100;
-    _objectCount = 1000;
-    _instanceCount = 100;
+    _objectCount = 10;
+    _instanceCount = 3;
     _drawCount = _instanceCount * _objectCount;
 
     if(!init())
