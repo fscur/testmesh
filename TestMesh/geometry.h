@@ -39,6 +39,7 @@ public:
 
     ~geometry();
     static geometry* create(std::vector<vertex> &vertices, std::vector<uint> &indices, std::vector<glm::mat4> &modelMatrices);
+    uint getIndicesCount() const { return _indicesCount; }
     void bind();
     void unbind();
     void render(uint instances, const std::vector<glm::mat4> &modelMatrices);

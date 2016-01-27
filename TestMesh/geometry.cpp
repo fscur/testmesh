@@ -141,4 +141,5 @@ void geometry::render(uint instances, const std::vector<glm::mat4> &modelMatrice
     glBufferData(GL_ARRAY_BUFFER, sizeof(glm::mat4) * instances, &modelMatrices[0], GL_DYNAMIC_DRAW);*/
 
     glDrawElementsInstanced(GL_TRIANGLES, _indicesCount, GL_UNSIGNED_INT, 0, instances);
+    //glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, );
 }
