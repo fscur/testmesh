@@ -121,8 +121,6 @@ void geometry::render()
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indicesVbo);
     glDrawElements(GL_TRIANGLES, _indicesSize, GL_UNSIGNED_INT, 0);
 
-
-
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);

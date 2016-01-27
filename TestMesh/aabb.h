@@ -1,6 +1,3 @@
-#ifndef _AABB_H_
-#define _AABB_H_
-
 #include <glm\glm.hpp>
 
 struct aabb
@@ -18,5 +15,3 @@ public:
     aabb(glm::vec3 min, glm::vec3 max);
     bool contains(glm::vec3 pos);
 };
-
-#endif // !1

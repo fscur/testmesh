@@ -1,7 +1,6 @@
 #include "testMesh.h"
 
 #include "geometry.h"
-#include "material.h"
 #include "shader.h"
 #include "color.h"
 #include "mathUtils.h"
@@ -15,11 +14,21 @@
 #include <SDL/SDL_image.h>
 #include <freetype\ft2build.h>
 #include FT_FREETYPE_H
-#include <glm\gtc\type_ptr.hpp>
-#include <algorithm>
-#include <memory>
 
-//#include <GL\GL.h>
+#include <algorithm>
+
+struct material
+{
+public:
+    material(color diffuse, color ambient) :
+        diffuse(diffuse), ambient(ambient)
+    {
+    }
+public:
+    color diffuse;
+    color ambient;
+    uint texture;
+};
 
 stopwatch _stopwatch;
 
@@ -30,17 +39,10 @@ FT_Library freeLib;
 std::vector<geometry*> _geometries;
 std::vector<glm::mat4> _modelMatrices;
 std::vector<material*> _materials;
-std::vector<texture*> _diffuseTextures;
-std::vector<texture*> _normalTextures;
-
-uint _texturesCount = 100;
-uint _materialsCount = 100;
 
 shader* _shader;
 texture* _texture;
 bool _isRunning = true;
-bool _materialChanged = true;
-bool _transformChanged = true;
 
 glm::mat4 _projectionMatrix;
 glm::mat4 _viewMatrix;
@@ -56,20 +58,12 @@ glm::vec2 _lastMousePos;
 bool _rotating;
 glm::vec3 _cameraPos;
 float _rotationSpeed = 0.01f;
-
-GLuint _materialsUbo;
-GLuint _transformsUbo;
+GLuint ubo;
 
 float randf(float fMin, float fMax)
 {
     float f = (double)rand() / RAND_MAX;
     return fMin + f * (fMax - fMin);
-}
-
-#include <windows.h>
-
-extern "C" {
-    _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
 
 bool createGLWindow()
@@ -89,8 +83,8 @@ bool createGLWindow()
     }
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 4);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
@@ -115,8 +109,6 @@ bool createGLWindow()
         LOG("Error" << glewGetErrorString(glewInitStatus))
             return false;
     }
-
-    SDL_GL_SetSwapInterval(0);
 
     return true;
 }
@@ -190,7 +182,7 @@ geometry* createCube()
     return geometry::create(vertices, indices);
 }
 
-material* createMaterial(texture* diffuseTexure, texture* normalTexture)
+material* createMaterial()
 {
     auto r = randf(0.0f, 1.0f);
     auto g = randf(0.0f, 1.0f);
@@ -202,62 +194,40 @@ material* createMaterial(texture* diffuseTexure, texture* normalTexture)
     g = randf(0.0f, 1.0f);
     b = randf(0.0f, 1.0f);
 
-    auto specular = color(r, g, b, 1);
+    auto ambient = color(r, g, b, 1);
 
-    return new material(diffuse, specular, diffuseTexure, normalTexture);
-}
-
-void createMaterials(uint n)
-{
-    _materials.push_back(
-        new material(color(0.0f, 0.0f, 0.5f, 1.0f), color(0.0f, 0.0f, 1.0f, 1.0f), _diffuseTextures[0], _diffuseTextures[0]));
-
-    _materials.push_back(
-        new material(color(0.2f, 0.0f, 0.2f, 1.0f), color(1.0f, 0.0f, 0.0f, 1.0f), _diffuseTextures[0], _diffuseTextures[0]));
-
-    for (auto i = 0; i < n -2; i++)
-    {
-        auto r = rand() % _texturesCount;
-
-        _materials.push_back(createMaterial(_diffuseTextures[r], _normalTextures[r]));
-    }
-}
-
-void createTextures(uint n)
-{
-    for (auto i = 0; i < n; i++)
-    {
-        _diffuseTextures.push_back(texture::fromFile("diffuse.bmp"));
-        _normalTextures.push_back(texture::fromFile("normal.bmp"));
-    }
-}
-
-void createModelMatrices(uint n)
-{
-    for (auto v = 0; v < n; v++)
-    {
-        auto mat = glm::mat4(
-            1.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f,
-            (float)randf(-0.5f, 0.5f) * 10.0f, (float)randf(-0.5f, 0.5f) * 10.0f, (float)randf(-0.5f, 0.5f) * 10.0f, 1.0f);
-
-        _modelMatrices.push_back(mat);
-    }
+    return new material(diffuse, ambient);
 }
 
 void createCubes()
 {
-    auto n = 10000;
+    auto n = 100;
 
     for (auto i = 0; i < n; i++)
     {
         _geometries.push_back(createCube());
     }
 
-    createModelMatrices(n);
-    createTextures(_texturesCount);
-    createMaterials(_materialsCount);
+    for (auto x = 0; x < 10; x++)
+    {
+        for (auto z = 0; z < 10; z++)
+        {
+            auto mat = glm::mat4(
+                1.0f, 0.0f, 0.0f, 0.0f,
+                0.0f, 1.0f, 0.0f, 0.0f,
+                0.0f, 0.0f, 1.0f, 0.0f,
+                (float)x, 0.0, (float)z, 1.0f);
+
+            _modelMatrices.push_back(mat);
+        }
+    }
+
+    n = 100;
+
+    for (auto i = 0; i < n; i++)
+    {
+        _materials.push_back(createMaterial());
+    }
 }
 
 void initShader()
@@ -269,24 +239,11 @@ void initShader()
     _shader->addAttribute("inNormal");
 
     _shader->init();
-    _shader->addUniform("v", 0);
-    _shader->addUniform("p", 1);
-    _shader->addUniform("matIndex", 2);
-    _shader->addUniform("mIndex", 3);
-    
-    auto id = _shader->getId();
 
-    GLuint transformsBlockIndex = glGetUniformBlockIndex(id, "TransformsBlock");
-    GLuint materialsBlockIndex = glGetUniformBlockIndex(id, "MaterialsBlock");
-
-    glGenBuffers(1, &_transformsUbo);
-    glGenBuffers(1, &_materialsUbo);
-
-    glUniformBlockBinding(id, transformsBlockIndex, 0);
-    glUniformBlockBinding(id, materialsBlockIndex, 1);
-
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, _transformsUbo);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 1, _materialsUbo);
+    _shader->addUniform("mvp");
+    _shader->addUniform("mv");
+    _shader->addUniform("ambient");
+    _shader->addUniform("diffuse");
 }
 
 void initTexture()
@@ -297,9 +254,10 @@ void initTexture()
 void initCamera()
 {
     _camera = new camera();
-    _camera->setPosition(glm::vec3(0.0f, 3.0f, 5.0f));
+    _camera->setPosition(glm::vec3(0.0f, 5.0f, 5.0f));
     _camera->setTarget(glm::vec3(0.0f));
-    _projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), 1024.0f / 768.0f, 0.1f, 100.0f);
+
+    _projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), 1024.0f / 768.0f, 0.1f, 1000.0f);
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
     _modelMatrix = glm::mat4(
         1.0f, 0.0f, 0.0f, 0.0f,
@@ -416,172 +374,37 @@ void input()
     }
 }
 
-float t = 0.0f;
-float i = 0.01f;
-
-void printUniformBlocks()
-{
-    GLint numBlocks;
-    GLint nameLen;
-
-    std::vector<std::string> nameList;
-    auto id = _shader->getId();
-    glGetProgramiv(id, GL_ACTIVE_UNIFORM_BLOCKS, &numBlocks);
-    nameList.reserve(numBlocks);
-
-    std::cout << "found " << numBlocks << " block in shader" << std::endl;
-
-    for (int blockIx = 0; blockIx < numBlocks; blockIx++) {
-        glGetActiveUniformBlockiv(id, blockIx, GL_UNIFORM_BLOCK_NAME_LENGTH, &nameLen);
-
-        std::vector<GLchar> name;
-        name.resize(nameLen);
-        glGetActiveUniformBlockName(id, blockIx, nameLen, NULL, &name[0]);
-
-        nameList.push_back(std::string());
-        nameList.back().assign(name.begin(), name.end() - 1); //Remove the null terminator.
-
-    }
-
-    for (unsigned int il = 0; il < nameList.size(); il++) {
-        std::cout << "Block name: " << nameList[il] << std::endl;
-    }
-
-}
-
-void update()
-{
-    if (_camera == nullptr)
-        return;
-
-    auto x = glm::cos(t);
-    auto z = glm::sin(t);
-    
-    t += i;
-
-    auto pos = glm::vec3(x, 0.2f, z) * 10.0f;
-    _camera->setPosition(pos);
-    _camera->update();
-
-    _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
-
-    if (_materialChanged)
-    {
-        GLint blockSize;
-
-        auto id = _shader->getId();
-
-        GLuint blockIndex = glGetUniformBlockIndex(id, "MaterialsBlock");
-
-        glGetActiveUniformBlockiv(id, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
-
-        GLubyte * blockBuffer = (GLubyte *)malloc(blockSize);
-
-        //const GLchar *names[] = { "materials.materials" };
-
-        //GLuint* indices = new GLuint[1]();
-        //glGetUniformIndices(id, 1, names, indices);
-
-        //GLint* offset = new GLint[1]();
-        //glGetActiveUniformsiv(id, 1, indices, GL_UNIFORM_OFFSET, offset);
-
-        for (auto i = 0; i < _materialsCount; i++)
-        {
-            auto material = _materials[i];
-            auto diffuseColor = material->getDiffuseColor();
-            auto specularColor = material->getSpecularColor();
-
-            GLfloat colors[] = {
-                diffuseColor.R,
-                diffuseColor.G,
-                diffuseColor.B,
-                diffuseColor.A,
-                specularColor.R,
-                specularColor.G,
-                specularColor.B,
-                specularColor.A };
-
-            GLuint64 handles[] =
-            {
-                material->getDiffuseTexture()->getHandle(),
-                material->getNormalTexture()->getHandle()
-            };
-
-            auto arrayStartPos = 48 * i;
-
-            memcpy(blockBuffer + arrayStartPos, colors, 32);
-            memcpy(blockBuffer + arrayStartPos + 32, handles, 16);
-        }
-
-        glBindBuffer(GL_UNIFORM_BUFFER, _materialsUbo);
-        glBufferData(GL_UNIFORM_BUFFER, blockSize, blockBuffer, GL_DYNAMIC_DRAW);
-
-        _materialChanged = false;
-    }
-
-    if (_transformChanged)
-    {
-        GLint blockSize;
-
-        auto id = _shader->getId();
-
-        GLuint blockIndex = glGetUniformBlockIndex(id, "TransformsBlock");
-
-        glGetActiveUniformBlockiv(id, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
-
-        //GLubyte * blockBuffer = (GLubyte *)malloc(blockSize);
-
-        //auto s = _modelMatrices.size();
-
-        //for (auto i = 0; i < 1; i++)
-        //{
-        //    //auto modelMatrix = _modelMatrices[i];
-        //    //auto transP = glm::transpose(modelMatrix);
-        //    //float* modelMatrixPtr = glm::value_ptr(modelMatrix);
-
-        //    GLfloat matx[] =
-        //    {
-        //        1.0f, 0.0f, 0.0f, 0.0f,
-        //        0.0f, 1.0f, 0.0f, 0.0f,
-        //        0.0f, 0.0f, 1.0f, 0.0f,
-        //        0.0f, 0.0f, 0.0f, 1.0f
-        //    };
-
-        //    //memcpy(blockBuffer + 64 * i, matx, 64);
-        //    memcpy(blockBuffer + 64 * i, &_modelMatrices[0], 64);
-        //}
-
-        glBindBuffer(GL_UNIFORM_BUFFER, _transformsUbo);
-        //std::cout << glewGetErrorString(glGetError()) << std::endl;
-        glBufferData(GL_UNIFORM_BUFFER, blockSize, &_modelMatrices[0], GL_DYNAMIC_DRAW);
-        //std::cout << glewGetErrorString(glGetError()) << std::endl;
-        _transformChanged = false;
-    }
-}
-
 void render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     _shader->bind();
 
-    _shader->getUniform(0).set(_viewMatrix);
-    _shader->getUniform(1).set(_projectionMatrix);
-
-    auto s = _geometries.size();
-
-    for (auto i = 0; i < s; i++)
+    for (auto i = 0; i < _geometries.size(); i++)
     {
         auto geometry = _geometries[i];
-        auto matIndex = rand() % _materialsCount;
-        auto mat = _materials[matIndex];
+        auto modelMatrix = _modelMatrices[i];
 
-        _shader->getUniform(2).set(matIndex);
-        _shader->getUniform(3).set((uint)i);
+        _shader->getUniform("mvp").set(_projectionMatrix * _viewMatrix * modelMatrix);
+        _shader->getUniform("mv").set(_projectionMatrix * _viewMatrix);
+        auto mvp = _projectionMatrix * _viewMatrix * modelMatrix;
+
+        auto mat = _materials[rand() % 100];
+        auto ambient = mat->ambient;
+        auto diffuse = mat->diffuse;
+
+        _shader->getUniform("ambient").set(ambient);
+        _shader->getUniform("diffuse").set(diffuse);
 
         geometry->render();
     }
 
     _shader->unbind();
+}
+
+void update()
+{
+    _camera->update();
+    _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
 }
 
 void loop()
@@ -605,12 +428,8 @@ void loop()
         input();
         update();
 
-        auto s =stopwatch::Measure([] { render(); SDL_GL_SwapWindow(_window); });
+        auto s = stopwatch::Measure([] { render(); SDL_GL_SwapWindow(_window); });
         std::cout << s * 1000 << std::endl;
-
-        //printUniformBlocks();
-
-        //system("pause");
 
         frames++;
         processedTime += dt;
@@ -620,8 +439,6 @@ void loop()
             frames = 0;
             processedTime -= 1.0;
         }
-
-        //system("pause");
     }
 }
 
@@ -643,12 +460,18 @@ void release()
 
 int main(int argc, char* args[])
 {
-    if (!init())
-        return -1;
+    stopwatch::Measure([&]
+    {
+        if (!init())
+            return -1;
+    }, "init");
 
     loop();
 
-    release();
+    stopwatch::Measure([&]
+    {
+        release();
+    }, "release");
 
     return 0;
 }

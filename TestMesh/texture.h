@@ -15,7 +15,6 @@ class texture
 private:
     GLuint _id;
     GLuint _textureType;
-    GLuint64 _handle;
 
 protected:
     GLuint _w;
@@ -27,11 +26,11 @@ private:
 public:
     ~texture();
 
-    inline GLuint getId() const { return _id; }
-    inline GLuint getWidth() const { return _w; }
-    inline GLuint getHeight() const { return _h; }
-    inline GLuint getTextureType() const { return _textureType; }
-    inline GLuint64 getHandle() const { return _handle; }
+    GLuint getId() const { return _id; }
+    GLuint getWidth() const { return _w; }
+    GLuint getHeight() const { return _h; }
+    GLuint gettextureType() const { return _textureType; }
+
     void bind(GLuint level = 0);
     void setParam(GLenum name, GLint value);
     void release();

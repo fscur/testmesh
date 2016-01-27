@@ -76,7 +76,7 @@ shader::shader(std::string name, std::string vFile, std::string fFile)
     _vFile = vFile;
     _fFile = fFile;
     _initialized = false;
-    _uniforms = new std::map<uint, uniform>();
+    _uniforms = new std::map<std::string, uniform>();
 }
 
 bool shader::init()
@@ -141,22 +141,22 @@ void shader::addAttribute(std::string name)
     _attributes.push_back(name);
 }
 
-void shader::addUniform(std::string name, uint id)
+void shader::addUniform(std::string name)
 {
     bind();
-    (*_uniforms)[id] = uniform::create(_id, name);
+    (*_uniforms)[name] = uniform::create(_id, name);
     unbind();
 }
 
-uniform shader::getUniform(uint id)
+uniform shader::getUniform(std::string name)
 {
-    return (*_uniforms)[id];
+    return (*_uniforms)[name];
 }
 
 void uniform::set(texture* value, GLuint index)
 {
     glActiveTexture(GL_TEXTURE0 + index);
-    glBindTexture(value->getTextureType(), value->getId());
+    glBindTexture(value->gettextureType(), value->getId());
     glUniform1i(_location, index);
 }
 
