@@ -1,0 +1,1 @@
+Project used for opengl api testing and learning purposes.
