@@ -19,8 +19,6 @@
 #include <algorithm>
 #include <memory>
 
-//#include <GL\GL.h>
-
 stopwatch _stopwatch;
 
 SDL_Window* _window;
@@ -477,14 +475,6 @@ void update()
 
         GLubyte * blockBuffer = (GLubyte *)malloc(blockSize);
 
-        //const GLchar *names[] = { "materials.materials" };
-
-        //GLuint* indices = new GLuint[1]();
-        //glGetUniformIndices(id, 1, names, indices);
-
-        //GLint* offset = new GLint[1]();
-        //glGetActiveUniformsiv(id, 1, indices, GL_UNIFORM_OFFSET, offset);
-
         for (auto i = 0; i < _materialsCount; i++)
         {
             auto material = _materials[i];
@@ -529,32 +519,8 @@ void update()
 
         glGetActiveUniformBlockiv(id, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
 
-        //GLubyte * blockBuffer = (GLubyte *)malloc(blockSize);
-
-        //auto s = _modelMatrices.size();
-
-        //for (auto i = 0; i < 1; i++)
-        //{
-        //    //auto modelMatrix = _modelMatrices[i];
-        //    //auto transP = glm::transpose(modelMatrix);
-        //    //float* modelMatrixPtr = glm::value_ptr(modelMatrix);
-
-        //    GLfloat matx[] =
-        //    {
-        //        1.0f, 0.0f, 0.0f, 0.0f,
-        //        0.0f, 1.0f, 0.0f, 0.0f,
-        //        0.0f, 0.0f, 1.0f, 0.0f,
-        //        0.0f, 0.0f, 0.0f, 1.0f
-        //    };
-
-        //    //memcpy(blockBuffer + 64 * i, matx, 64);
-        //    memcpy(blockBuffer + 64 * i, &_modelMatrices[0], 64);
-        //}
-
         glBindBuffer(GL_UNIFORM_BUFFER, _transformsUbo);
-        //std::cout << glewGetErrorString(glGetError()) << std::endl;
         glBufferData(GL_UNIFORM_BUFFER, blockSize, &_modelMatrices[0], GL_DYNAMIC_DRAW);
-        //std::cout << glewGetErrorString(glGetError()) << std::endl;
         _transformChanged = false;
     }
 }
@@ -608,10 +574,6 @@ void loop()
         auto s =stopwatch::Measure([] { render(); SDL_GL_SwapWindow(_window); });
         std::cout << s * 1000 << std::endl;
 
-        //printUniformBlocks();
-
-        //system("pause");
-
         frames++;
         processedTime += dt;
 
@@ -620,8 +582,6 @@ void loop()
             frames = 0;
             processedTime -= 1.0;
         }
-
-        //system("pause");
     }
 }
 
