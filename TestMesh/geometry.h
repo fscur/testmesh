@@ -18,6 +18,7 @@ private:
 
     std::vector<vertex> _vertices;
     std::vector<uint> _indices;
+    bool _binded;
 
 private:
 
@@ -34,8 +35,11 @@ private:
 public:
 
     ~geometry();
-    static geometry* create(std::vector<vertex> &vertices, std::vector<uint> &indices);
-    void render(); 
+    static geometry* create(std::vector<vertex> &vertices, std::vector<uint> &indices); 
+    void bind();
+    void unbind();
+    void render(uint instances);
+    void render();
 };
 
 #endif

@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <memory>
 
+//#include <GL\GL.h>
+
 stopwatch _stopwatch;
 
 SDL_Window* _window;
@@ -33,9 +35,12 @@ std::vector<texture*> _normalTextures;
 
 uint _texturesCount = 100;
 uint _materialsCount = 100;
+uint _instanceCount = 1000;
 
 shader* _shader;
 texture* _texture;
+geometry* _geometry;
+
 bool _isRunning = true;
 bool _materialChanged = true;
 bool _transformChanged = true;
@@ -244,15 +249,9 @@ void createModelMatrices(uint n)
     }
 }
 
-void createCubes()
+void createCubes(uint n)
 {
-    auto n = 10000;
-
-    for (auto i = 0; i < n; i++)
-    {
-        _geometries.push_back(createCube());
-    }
-
+    _geometry = createCube();
     createModelMatrices(n);
     createTextures(_texturesCount);
     createMaterials(_materialsCount);
@@ -270,7 +269,7 @@ void initShader()
     _shader->addUniform("v", 0);
     _shader->addUniform("p", 1);
     _shader->addUniform("matIndex", 2);
-    _shader->addUniform("mIndex", 3);
+    //_shader->addUniform("mIndex", 3);
     
     auto id = _shader->getId();
 
@@ -326,7 +325,7 @@ bool init()
 
     initGL();
     initTexture();
-    createCubes();
+    createCubes(_instanceCount);
     initShader();
     initCamera();
 
@@ -475,6 +474,14 @@ void update()
 
         GLubyte * blockBuffer = (GLubyte *)malloc(blockSize);
 
+        //const GLchar *names[] = { "materials.materials" };
+
+        //GLuint* indices = new GLuint[1]();
+        //glGetUniformIndices(id, 1, names, indices);
+
+        //GLint* offset = new GLint[1]();
+        //glGetActiveUniformsiv(id, 1, indices, GL_UNIFORM_OFFSET, offset);
+
         for (auto i = 0; i < _materialsCount; i++)
         {
             auto material = _materials[i];
@@ -519,8 +526,32 @@ void update()
 
         glGetActiveUniformBlockiv(id, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
 
+        //GLubyte * blockBuffer = (GLubyte *)malloc(blockSize);
+
+        //auto s = _modelMatrices.size();
+
+        //for (auto i = 0; i < 1; i++)
+        //{
+        //    //auto modelMatrix = _modelMatrices[i];
+        //    //auto transP = glm::transpose(modelMatrix);
+        //    //float* modelMatrixPtr = glm::value_ptr(modelMatrix);
+
+        //    GLfloat matx[] =
+        //    {
+        //        1.0f, 0.0f, 0.0f, 0.0f,
+        //        0.0f, 1.0f, 0.0f, 0.0f,
+        //        0.0f, 0.0f, 1.0f, 0.0f,
+        //        0.0f, 0.0f, 0.0f, 1.0f
+        //    };
+
+        //    //memcpy(blockBuffer + 64 * i, matx, 64);
+        //    memcpy(blockBuffer + 64 * i, &_modelMatrices[0], 64);
+        //}
+
         glBindBuffer(GL_UNIFORM_BUFFER, _transformsUbo);
+        //std::cout << glewGetErrorString(glGetError()) << std::endl;
         glBufferData(GL_UNIFORM_BUFFER, blockSize, &_modelMatrices[0], GL_DYNAMIC_DRAW);
+        //std::cout << glewGetErrorString(glGetError()) << std::endl;
         _transformChanged = false;
     }
 }
@@ -528,26 +559,16 @@ void update()
 void render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    _shader->bind();
 
     _shader->getUniform(0).set(_viewMatrix);
-    _shader->getUniform(1).set(_projectionMatrix);
 
-    auto s = _geometries.size();
+    auto matIndex = rand() % _materialsCount;
+    auto mat = _materials[matIndex];
 
-    for (auto i = 0; i < s; i++)
-    {
-        auto geometry = _geometries[i];
-        auto matIndex = rand() % _materialsCount;
-        auto mat = _materials[matIndex];
+    _shader->getUniform(2).set(matIndex);
+    //_shader->getUniform(3).set((uint)i);
 
-        _shader->getUniform(2).set(matIndex);
-        _shader->getUniform(3).set((uint)i);
-
-        geometry->render();
-    }
-
-    _shader->unbind();
+    _geometry->render(_instanceCount);
 }
 
 void loop()
@@ -574,6 +595,10 @@ void loop()
         auto s =stopwatch::Measure([] { render(); SDL_GL_SwapWindow(_window); });
         std::cout << s * 1000 << std::endl;
 
+        //printUniformBlocks();
+
+        //system("pause");
+
         frames++;
         processedTime += dt;
 
@@ -582,6 +607,8 @@ void loop()
             frames = 0;
             processedTime -= 1.0;
         }
+
+        //system("pause");
     }
 }
 
@@ -606,7 +633,15 @@ int main(int argc, char* args[])
     if (!init())
         return -1;
 
+    _shader->bind();
+    _shader->getUniform(1).set(_projectionMatrix);
+
+    _geometry->bind();
+
     loop();
+
+    _geometry->unbind();
+    _shader->unbind();
 
     release();
 

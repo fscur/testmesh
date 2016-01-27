@@ -101,6 +101,43 @@ void geometry::createBuffers(std::vector<vertex> &vertices,
     }
 }
 
+void geometry::bind()
+{
+    //glBindVertexArray(_vao);
+
+    glEnableVertexAttribArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, _verticesVbo);
+    glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glEnableVertexAttribArray(1);
+    glBindBuffer(GL_ARRAY_BUFFER, _texCoordsVbo);
+    glVertexAttribPointer((GLuint)1, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glEnableVertexAttribArray(2);
+    glBindBuffer(GL_ARRAY_BUFFER, _normalsVbo);
+    glVertexAttribPointer((GLuint)2, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    /*glDrawArrays(GL_POINTS, 0, _vertices.size());
+    glEnable(GL_PROGRAM_POINT_SIZE);
+    */
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indicesVbo);
+}
+
+void geometry::unbind()
+{
+    glDisableVertexAttribArray(0);
+    glDisableVertexAttribArray(1);
+    glDisableVertexAttribArray(2);
+
+
+    //glBindVertexArray(_vao);
+}
+
+void geometry::render(uint instances)
+{
+    glDrawElementsInstanced(GL_TRIANGLES, _indicesSize, GL_UNSIGNED_INT, 0, instances);
+}
+
 void geometry::render()
 {
     glEnableVertexAttribArray(0);
@@ -115,6 +152,9 @@ void geometry::render()
     glBindBuffer(GL_ARRAY_BUFFER, _normalsVbo);
     glVertexAttribPointer((GLuint)2, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
+    /*glDrawArrays(GL_POINTS, 0, _vertices.size());
+    glEnable(GL_PROGRAM_POINT_SIZE);
+   */
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indicesVbo);
     glDrawElements(GL_TRIANGLES, _indicesSize, GL_UNSIGNED_INT, 0);
 
