@@ -119,16 +119,18 @@ bool createGLWindow()
             return false;
     }
 
-    SDL_GL_SetSwapInterval(0);
+    //SDL_GL_SetSwapInterval(0);
 
     return true;
 }
 
-void initGL()
+bool initGL()
 {
     glClearColor(0.0f, 0.0f, 0.0f, 0.5f);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
+
+    return glGetError() != GL_FALSE;
 }
 
 geometry* createCube()
@@ -190,7 +192,7 @@ geometry* createCube()
     addVertex(vertex(glm::vec3(+0.5f, +0.5f, +0.5f), glm::vec2(0.0, 1.0), glm::vec3(0.0, 1.0, 0.0)));
     addVertex(vertex(glm::vec3(+0.5f, +0.5f, -0.5f), glm::vec2(0.0, 0.0), glm::vec3(0.0, 1.0, 0.0)));
 
-    return geometry::create(vertices, indices);
+    return geometry::create(vertices, indices, _modelMatrices);
 }
 
 material* createMaterial(texture* diffuseTexure, texture* normalTexture)
@@ -213,10 +215,10 @@ material* createMaterial(texture* diffuseTexure, texture* normalTexture)
 void createMaterials(uint n)
 {
     _materials.push_back(
-        new material(color(0.0f, 0.0f, 0.5f, 1.0f), color(0.0f, 0.0f, 1.0f, 1.0f), _diffuseTextures[0], _diffuseTextures[0]));
+        new material(color(0.0f, 0.0f, 0.5f, 1.0f), color(0.0f, 0.0f, 1.0f, 1.0f), _diffuseTextures[0], _normalTextures[0]));
 
     _materials.push_back(
-        new material(color(0.2f, 0.0f, 0.2f, 1.0f), color(1.0f, 0.0f, 0.0f, 1.0f), _diffuseTextures[0], _diffuseTextures[0]));
+        new material(color(0.2f, 0.0f, 0.2f, 1.0f), color(1.0f, 0.0f, 0.0f, 1.0f), _diffuseTextures[0], _normalTextures[0]));
 
     for (auto i = 0; i < n -2; i++)
     {
@@ -251,8 +253,8 @@ void createModelMatrices(uint n)
 
 void createCubes(uint n)
 {
-    _geometry = createCube();
     createModelMatrices(n);
+    _geometry = createCube();
     createTextures(_texturesCount);
     createMaterials(_materialsCount);
 }
@@ -264,25 +266,17 @@ void initShader()
     _shader->addAttribute("inPosition");
     _shader->addAttribute("inTexCoord");
     _shader->addAttribute("inNormal");
+    _shader->addAttribute("inModelMatrix");
 
     _shader->init();
-    _shader->addUniform("v", 0);
-    _shader->addUniform("p", 1);
+    _shader->addUniform("vp", 0);
     _shader->addUniform("matIndex", 2);
-    //_shader->addUniform("mIndex", 3);
     
     auto id = _shader->getId();
 
-    GLuint transformsBlockIndex = glGetUniformBlockIndex(id, "TransformsBlock");
     GLuint materialsBlockIndex = glGetUniformBlockIndex(id, "MaterialsBlock");
-
-    glGenBuffers(1, &_transformsUbo);
     glGenBuffers(1, &_materialsUbo);
-
-    glUniformBlockBinding(id, transformsBlockIndex, 0);
     glUniformBlockBinding(id, materialsBlockIndex, 1);
-
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, _transformsUbo);
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, _materialsUbo);
 }
 
@@ -298,11 +292,6 @@ void initCamera()
     _camera->setTarget(glm::vec3(0.0f));
     _projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), 1024.0f / 768.0f, 0.1f, 100.0f);
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
-    _modelMatrix = glm::mat4(
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 bool init()
@@ -323,7 +312,9 @@ bool init()
     if (!createGLWindow())
         return false;
 
-    initGL();
+    if (!initGL())
+        return false;
+
     initTexture();
     createCubes(_instanceCount);
     initShader();
@@ -516,59 +507,58 @@ void update()
         _materialChanged = false;
     }
 
-    if (_transformChanged)
-    {
-        GLint blockSize;
+    //if (_transformChanged)
+    //{
+    //    GLint blockSize;
 
-        auto id = _shader->getId();
+    //    auto id = _shader->getId();
 
-        GLuint blockIndex = glGetUniformBlockIndex(id, "TransformsBlock");
+    //    GLuint blockIndex = glGetUniformBlockIndex(id, "TransformsBlock");
 
-        glGetActiveUniformBlockiv(id, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
+    //    glGetActiveUniformBlockiv(id, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
 
-        //GLubyte * blockBuffer = (GLubyte *)malloc(blockSize);
+    //    //GLubyte * blockBuffer = (GLubyte *)malloc(blockSize);
 
-        //auto s = _modelMatrices.size();
+    //    //auto s = _modelMatrices.size();
 
-        //for (auto i = 0; i < 1; i++)
-        //{
-        //    //auto modelMatrix = _modelMatrices[i];
-        //    //auto transP = glm::transpose(modelMatrix);
-        //    //float* modelMatrixPtr = glm::value_ptr(modelMatrix);
+    //    //for (auto i = 0; i < 1; i++)
+    //    //{
+    //    //    //auto modelMatrix = _modelMatrices[i];
+    //    //    //auto transP = glm::transpose(modelMatrix);
+    //    //    //float* modelMatrixPtr = glm::value_ptr(modelMatrix);
 
-        //    GLfloat matx[] =
-        //    {
-        //        1.0f, 0.0f, 0.0f, 0.0f,
-        //        0.0f, 1.0f, 0.0f, 0.0f,
-        //        0.0f, 0.0f, 1.0f, 0.0f,
-        //        0.0f, 0.0f, 0.0f, 1.0f
-        //    };
+    //    //    GLfloat matx[] =
+    //    //    {
+    //    //        1.0f, 0.0f, 0.0f, 0.0f,
+    //    //        0.0f, 1.0f, 0.0f, 0.0f,
+    //    //        0.0f, 0.0f, 1.0f, 0.0f,
+    //    //        0.0f, 0.0f, 0.0f, 1.0f
+    //    //    };
 
-        //    //memcpy(blockBuffer + 64 * i, matx, 64);
-        //    memcpy(blockBuffer + 64 * i, &_modelMatrices[0], 64);
-        //}
+    //    //    //memcpy(blockBuffer + 64 * i, matx, 64);
+    //    //    memcpy(blockBuffer + 64 * i, &_modelMatrices[0], 64);
+    //    //}
 
-        glBindBuffer(GL_UNIFORM_BUFFER, _transformsUbo);
-        //std::cout << glewGetErrorString(glGetError()) << std::endl;
-        glBufferData(GL_UNIFORM_BUFFER, blockSize, &_modelMatrices[0], GL_DYNAMIC_DRAW);
-        //std::cout << glewGetErrorString(glGetError()) << std::endl;
-        _transformChanged = false;
-    }
+    //    glBindBuffer(GL_UNIFORM_BUFFER, _transformsUbo);
+    //    //std::cout << glewGetErrorString(glGetError()) << std::endl;
+    //    glBufferData(GL_UNIFORM_BUFFER, blockSize, &_modelMatrices[0], GL_DYNAMIC_DRAW);
+    //    //std::cout << glewGetErrorString(glGetError()) << std::endl;
+    //    _transformChanged = false;
+    //}
 }
 
 void render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    _shader->getUniform(0).set(_viewMatrix);
+    _shader->getUniform(0).set(_projectionMatrix * _viewMatrix);
 
     auto matIndex = rand() % _materialsCount;
     auto mat = _materials[matIndex];
 
     _shader->getUniform(2).set(matIndex);
-    //_shader->getUniform(3).set((uint)i);
 
-    _geometry->render(_instanceCount);
+    _geometry->render(_instanceCount, _modelMatrices);
 }
 
 void loop()
@@ -634,7 +624,6 @@ int main(int argc, char* args[])
         return -1;
 
     _shader->bind();
-    _shader->getUniform(1).set(_projectionMatrix);
 
     _geometry->bind();
 

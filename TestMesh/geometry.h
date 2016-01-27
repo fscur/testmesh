@@ -9,12 +9,15 @@
 class geometry
 {
 private:
+    GLuint _max_instances = 1000;
     GLuint _vao;
     GLuint _verticesVbo;
     GLuint _texCoordsVbo;
     GLuint _normalsVbo;
     GLuint _indicesVbo;
+    GLuint _modelMatricesVbo;
     GLsizei _indicesSize;
+    GLsizei _indicesCount;
 
     std::vector<vertex> _vertices;
     std::vector<uint> _indices;
@@ -28,18 +31,17 @@ private:
         GLfloat* &texCoordBuffer,
         GLfloat* &normalBuffer);
 
-    void addVertices(std::vector<vertex> &vertices, std::vector<uint> &indices);
+    void addVertices(std::vector<vertex> &vertices, std::vector<uint> &indices, std::vector<glm::mat4> &modelMatrices);
 
     geometry();
 
 public:
 
     ~geometry();
-    static geometry* create(std::vector<vertex> &vertices, std::vector<uint> &indices); 
+    static geometry* create(std::vector<vertex> &vertices, std::vector<uint> &indices, std::vector<glm::mat4> &modelMatrices);
     void bind();
     void unbind();
-    void render(uint instances);
-    void render();
+    void render(uint instances, const std::vector<glm::mat4> &modelMatrices);
 };
 
 #endif
