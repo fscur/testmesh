@@ -130,6 +130,11 @@ texture* texture::fromFile(std::string fileName)
     auto t = new texture(id, width, height);
     t->_textureType = GL_TEXTURE_2D;
 
+    GLuint64 handle = glGetTextureHandleARB(id);
+    glMakeTextureHandleResidentARB(handle);
+
+    t->_handle = handle;
+
     return t;
 }
 
@@ -142,6 +147,5 @@ texture* texture::create(GLuint w, GLuint h, GLint internalFormat, GLint format,
     auto t = new texture(id, w, h);
 
     t->_textureType = GL_TEXTURE_2D;
-
     return t;
 }
