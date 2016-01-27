@@ -1,22 +1,14 @@
 #version 450
 
-layout (location = 0) in vec3 inPosition;
-layout (location = 1) in vec2 inTexCoord;
-layout (location = 2) in uint inDrawId;
-layout (location = 3) in mat4 inModelMatrix;
+in vec3 inPosition;
+in vec2 inTexCoord;
 
-uniform mat4 vp;
+uniform mat4 mvp;
 
-out vec3 fragPosition;
 out vec2 fragTexCoord;
-flat out uint fragDrawId;
-//out vec3 fragNormal;
 
 void main()
-{
-	gl_Position = vp * inModelMatrix * vec4(inPosition, 1.0);
-	fragTexCoord = inTexCoord;
-	fragPosition = inPosition;
-	fragDrawId = inDrawId;
-	//fragNormal = inNormal;
+{ 
+    gl_Position = mvp * vec4(inPosition, 1.0);
+    fragTexCoord = inTexCoord;
 }

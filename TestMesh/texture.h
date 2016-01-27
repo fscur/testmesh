@@ -16,6 +16,9 @@ private:
     GLuint _id;
     GLuint _textureType;
     GLuint64 _handle;
+    unsigned char* _data;
+    GLenum _dataType;
+    GLenum _dataFormat;
 
 protected:
     GLuint _w;
@@ -32,6 +35,9 @@ public:
     inline GLuint getHeight() const { return _h; }
     inline GLuint getTextureType() const { return _textureType; }
     inline GLuint64 getHandle() const { return _handle; }
+    inline unsigned char* getData() const { return _data; }
+    inline GLenum getDataFormat() const { return _dataFormat; }
+    inline GLenum getDataType() const { return _dataType; }
     void bind(GLuint level = 0);
     void setParam(GLenum name, GLint value);
     void release();

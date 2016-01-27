@@ -18,46 +18,8 @@
 #include <glm\gtc\type_ptr.hpp>
 #include <algorithm>
 #include <memory>
-#include <cstdlib>
-#include <iostream>
-#include <ctime>
+
 //#include <GL\GL.h>
-
-typedef struct
-{
-    uint count;
-    uint instanceCount;
-    uint firstIndex;
-    uint baseVertex;
-    uint baseInstance;
-}
-DrawElementsIndirectCommand;
-
-DrawElementsIndirectCommand* _multiDrawCommands;
-
-typedef struct
-{
-    uint drawMaterial0;
-    uint drawMaterial1;
-    uint drawMaterial2;
-    uint drawMaterial3;
-}
-drawMaterialData;
-
-typedef struct
-{
-    float diffuseR;
-    float diffuseG;
-    float diffuseB;
-    float diffuseA;
-    float specularR;
-    float specularG;
-    float specularB;
-    float specularA;
-    GLuint64 diffuseHandle;
-    GLuint64 normalHandle;
-}
-materialData;
 
 stopwatch _stopwatch;
 
@@ -67,34 +29,13 @@ FT_Library freeLib;
 
 std::vector<geometry*> _geometries;
 std::vector<glm::mat4> _modelMatrices;
-std::vector<int> _updatedModelMatricesIndices;
-
-std::vector<material*> _materialsLibrary;
-std::vector<materialData> _materialsLibraryData;
-std::vector<drawMaterialData> _drawMaterials;
+std::vector<material*> _materials;
 std::vector<texture*> _diffuseTextures;
 std::vector<texture*> _normalTextures;
 
-uint _texturesCount;
-uint _materialsCount;
-
-uint _objectCount;
-uint _instanceCount;
-uint _drawCount;
-
-uint _multiDrawBufferId;
-uint _vao;
-
-std::vector<vertex> _vertices;
-std::vector<uint> _indices;
-
-float* _positionsBuffer;
-float* _texCoordsBuffer;
-float* _normalsBuffer;
-uint* _drawIndexBuffer;
-uint* _indicesBuffer;
-
-uint _modelMatricesBufferId;
+uint _texturesCount = 100;
+uint _materialsCount = 100;
+uint _instanceCount = 1000;
 
 shader* _shader;
 texture* _texture;
@@ -106,6 +47,7 @@ bool _transformChanged = true;
 
 glm::mat4 _projectionMatrix;
 glm::mat4 _viewMatrix;
+glm::mat4 _modelMatrix;
 
 color _color = color(1.0f, 0.0f, 0.0f, 1.0f);
 
@@ -118,10 +60,14 @@ bool _rotating;
 glm::vec3 _cameraPos;
 float _rotationSpeed = 0.01f;
 
+GLuint _materialsUbo;
+GLuint _transformsUbo;
+
+std::vector<GLint> _textureArrayIds;
 
 float randf(float fMin, float fMax)
 {
-    float f = (double) rand() / RAND_MAX;
+    float f = (double)rand() / RAND_MAX;
     return fMin + f * (fMax - fMin);
 }
 
@@ -141,7 +87,7 @@ bool createGLWindow()
         768,
         SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
 
-    if(_window == NULL)
+    if (_window == NULL)
     {
         LOG("Window could not be created! SDL_Error: " << SDL_GetError());
         return false;
@@ -159,7 +105,7 @@ bool createGLWindow()
 
     _glContext = SDL_GL_CreateContext(_window);
 
-    if(!_glContext)
+    if (!_glContext)
     {
         LOG("Could not create context:" << SDL_GetError());
         return false;
@@ -169,13 +115,13 @@ bool createGLWindow()
 
     GLenum glewInitStatus = glewInit();
 
-    if(glewInitStatus != GLEW_OK)
+    if (glewInitStatus != GLEW_OK)
     {
         LOG("Error" << glewGetErrorString(glewInitStatus))
             return false;
     }
 
-    SDL_GL_SetSwapInterval(0);
+    //SDL_GL_SetSwapInterval(0);
 
     return true;
 }
@@ -189,19 +135,22 @@ bool initGL()
     return glGetError() != GL_FALSE;
 }
 
-void createCubes()
+geometry* createCube()
 {
     auto _octree = new octree(aabb(glm::vec3(-0.7, -0.7, -0.7), glm::vec3(0.7, 0.7, 0.7)), 5, 100);
-
+    auto vertices = std::vector<vertex>();
+    auto indices = std::vector<uint>();
     auto addVertex = [&](vertex& vertex)
     {
         uint index = -1;
 
-        if(_octree->insert(vertex, index))
-            _vertices.push_back(vertex);
+        if (_octree->insert(vertex, index))
+            vertices.push_back(vertex);
 
-        _indices.push_back(index);
+        indices.push_back(index);
     };
+
+    auto s = vertices.size();
 
     addVertex(vertex(glm::vec3(-0.5f, -0.5f, +0.5f), glm::vec2(0.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
     addVertex(vertex(glm::vec3(+0.5f, -0.5f, +0.5f), glm::vec2(1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
@@ -244,6 +193,8 @@ void createCubes()
     addVertex(vertex(glm::vec3(-0.5f, +0.5f, +0.5f), glm::vec2(1.0, 1.0), glm::vec3(0.0, 1.0, 0.0)));
     addVertex(vertex(glm::vec3(+0.5f, +0.5f, +0.5f), glm::vec2(0.0, 1.0), glm::vec3(0.0, 1.0, 0.0)));
     addVertex(vertex(glm::vec3(+0.5f, +0.5f, -0.5f), glm::vec2(0.0, 0.0), glm::vec3(0.0, 1.0, 0.0)));
+
+    return geometry::create(vertices, indices, _modelMatrices);
 }
 
 material* createMaterial(texture* diffuseTexure, texture* normalTexture)
@@ -263,73 +214,25 @@ material* createMaterial(texture* diffuseTexure, texture* normalTexture)
     return new material(diffuse, specular, diffuseTexure, normalTexture);
 }
 
-void createMaterials()
+void createMaterials(uint n)
 {
-    for(auto i = 0; i < _materialsCount; i++)
+    _materials.push_back(
+        new material(color(0.0f, 0.0f, 0.5f, 1.0f), color(0.0f, 0.0f, 1.0f, 1.0f), _diffuseTextures[0], _normalTextures[0]));
+
+    _materials.push_back(
+        new material(color(0.2f, 0.0f, 0.2f, 1.0f), color(1.0f, 0.0f, 0.0f, 1.0f), _diffuseTextures[0], _normalTextures[0]));
+
+    for (auto i = 0; i < n -2; i++)
     {
         auto r = rand() % _texturesCount;
 
-        _materialsLibrary.push_back(createMaterial(_diffuseTextures[r], _normalTextures[r]));
+        _materials.push_back(createMaterial(_diffuseTextures[r], _normalTextures[r]));
     }
-
-    for(auto i = 0; i < _materialsCount; i++)
-    {
-        auto material = _materialsLibrary[i];
-        auto data = materialData();
-        auto diffuseColor = material->getDiffuseColor();
-        data.diffuseR = diffuseColor.R;
-        data.diffuseG = diffuseColor.G;
-        data.diffuseB = diffuseColor.B;
-        data.diffuseA = diffuseColor.A;
-
-        auto specularColor = material->getSpecularColor();
-        data.specularR = specularColor.R;
-        data.specularG = specularColor.G;
-        data.specularB = specularColor.B;
-        data.specularA = specularColor.A;
-
-        data.diffuseHandle = material->getDiffuseTexture()->getHandle();
-        data.normalHandle = material->getNormalTexture()->getHandle();
-
-        _materialsLibraryData.push_back(data);
-    }
-
-    auto id = _shader->getId();
-    uint materialsLibraryBufferId = 0;
-    glCreateBuffers(1, &materialsLibraryBufferId);
-    glBindBuffer(GL_UNIFORM_BUFFER, materialsLibraryBufferId);
-    auto size = sizeof(materialData) * _materialsCount;
-    glNamedBufferData(materialsLibraryBufferId, sizeof(materialData) * _materialsCount, &_materialsLibraryData[0], GL_STATIC_DRAW);
-    uint materialsLibraryBlockIndex = glGetUniformBlockIndex(id, "MaterialsLibraryBlock");
-    glUniformBlockBinding(id, materialsLibraryBlockIndex, 0);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, materialsLibraryBufferId);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-    for(auto i = 0; i < _drawCount; i++)
-    {
-        auto matIndex = rand() % _materialsCount;
-        auto data = drawMaterialData();
-        data.drawMaterial0 = 0;
-        data.drawMaterial1 = matIndex;
-        data.drawMaterial2 = i;
-        data.drawMaterial3 = 3;
-
-        _drawMaterials.push_back(data);
-    }
-
-    uint drawMaterialsBufferId = 0;
-    glCreateBuffers(1, &drawMaterialsBufferId);
-    glBindBuffer(GL_UNIFORM_BUFFER, drawMaterialsBufferId);
-    glNamedBufferData(drawMaterialsBufferId, sizeof(drawMaterialData) * _drawCount, &_drawMaterials[0], GL_STATIC_DRAW);
-    uint drawMaterialsBlockIndex = glGetUniformBlockIndex(id, "DrawMaterialsBlock");
-    glUniformBlockBinding(id, drawMaterialsBlockIndex, 1);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 1, drawMaterialsBufferId);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void createTextures(uint n)
 {
-    for(auto i = 0; i < n; i++)
+    for (auto i = 0; i < n; i++)
     {
         _diffuseTextures.push_back(texture::fromFile("diffuse.bmp"));
         _normalTextures.push_back(texture::fromFile("normal.bmp"));
@@ -338,62 +241,22 @@ void createTextures(uint n)
 
 void createModelMatrices(uint n)
 {
-    for(auto v = 0; v < n; v++)
+    for (auto v = 0; v < n; v++)
     {
-
-        auto x = randf(-0.5f, 0.5f) * 10.0f;
-        auto y = randf(-0.5f, 0.5f) * 10.0f;
-        auto z = randf(-0.5f, 0.5f) * 10.0f;
-
         auto mat = glm::mat4(
             1.0f, 0.0f, 0.0f, 0.0f,
             0.0f, 1.0f, 0.0f, 0.0f,
             0.0f, 0.0f, 1.0f, 0.0f,
-            x, y, z, 1.0f);
-
-        //auto mat = glm::mat4(
-        //    1.0f, 0.0f, 0.0f, 0.0f,
-        //    0.0f, 1.0f, 0.0f, 0.0f,
-        //    0.0f, 0.0f, 1.0f, 0.0f,
-        //    0.0f, 0.0f, 0.0f, 1.0f);
+            (float)randf(-0.5f, 0.5f) * 10.0f, (float)randf(-0.5f, 0.5f) * 10.0f, (float)randf(-0.5f, 0.5f) * 10.0f, 1.0f);
 
         _modelMatrices.push_back(mat);
     }
+}
 
-    /*auto mat = glm::mat4(
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        -2.0f, 0.0f, 0.0f, 1.0f);
-
-    _modelMatrices.push_back(mat);
-
-
-     mat = glm::mat4(
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f);
-
-    _modelMatrices.push_back(mat);
-
-
-     mat = glm::mat4(
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        2.0f, 0.0f, 0.0f, 1.0f);
-
-    _modelMatrices.push_back(mat);
-
-
-     mat = glm::mat4(
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        5.0f, 0.0f, 0.0f, 1.0f);
-
-    _modelMatrices.push_back(mat);*/
+void createCubes(uint n)
+{
+    createModelMatrices(n);
+    _geometry = createCube();
 }
 
 void initShader()
@@ -402,17 +265,64 @@ void initShader()
 
     _shader->addAttribute("inPosition");
     _shader->addAttribute("inTexCoord");
-    _shader->addAttribute("inDrawId");
+    _shader->addAttribute("inNormal");
     _shader->addAttribute("inModelMatrix");
-    //_shader->addAttribute("inNormal");
 
     _shader->init();
-    _shader->addUniform("vp", 0);
+    _shader->addUniform("mvp", 0);
+    _shader->addUniform("diffuseTextureArrayIndex", 1);
+    _shader->addUniform("diffuseTexturePageIndex", 2);
+    _shader->addUniform("textureArrays", 3);
 }
 
 void initTexture()
 {
-    _texture = texture::fromFile("C:\\test.bmp");
+    //_texture = texture::fromFile("C:\\test.bmp");
+}
+
+void initArrayTextures()
+{
+    auto data = new texture*[5];
+    data[0] = texture::fromFile("C:\\A.png");
+    data[1] = texture::fromFile("C:\\I.png");
+    data[2] = texture::fromFile("C:\\U.png");
+    data[3] = texture::fromFile("C:\\E.png");
+    data[4] = texture::fromFile("C:\\O.png");
+
+    for (int i = 0; i < 5; i++)
+    {
+        auto tex = data[i % 5];
+        GLuint id;
+        glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &id);
+        glTextureStorage3D(id,
+            1,
+            GL_RGBA8,
+            tex->getWidth(),
+            tex->getHeight(),
+            10);
+
+        glActiveTexture(GL_TEXTURE0 + i);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, id);
+
+        glTexSubImage3D(GL_TEXTURE_2D_ARRAY,
+            0,
+            0, 0,
+            0,
+            tex->getWidth(),
+            tex->getHeight(),
+            1,
+            tex->getDataFormat(),
+            tex->getDataType(),
+            tex->getData());
+
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+
+        _textureArrayIds.push_back(i);
+    }
 }
 
 void initCamera()
@@ -424,173 +334,9 @@ void initCamera()
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
 }
 
-void createIndirectDrawBuffers()
-{
-    glGenBuffers(1, &_multiDrawBufferId);
-    glGenVertexArrays(1, &_vao);
-}
-
-void fillBuffers()
-{
-    _positionsBuffer = new GLfloat[_vertices.size() * 3 * _objectCount];
-    _texCoordsBuffer = new GLfloat[_vertices.size() * 2 * _objectCount];
-
-    int vIndex = -1;
-    int tIndex = -1;
-    int nIndex = -1;
-
-    for(uint i = 0; i < _objectCount; i++)
-    {
-        for(auto vertex : _vertices)
-        {
-            GLfloat x = vertex.GetPosition().x;
-            GLfloat y = vertex.GetPosition().y;
-            GLfloat z = vertex.GetPosition().z;
-
-            _positionsBuffer[++vIndex] = x;
-            _positionsBuffer[++vIndex] = y;
-            _positionsBuffer[++vIndex] = z;
-
-            GLfloat u = vertex.GetTexCoord().x;
-            GLfloat v = vertex.GetTexCoord().y;
-
-            _texCoordsBuffer[++tIndex] = u;
-            _texCoordsBuffer[++tIndex] = v;
-        }
-    }
-
-    _drawIndexBuffer = new GLuint[_drawCount];
-
-    for(uint i = 0; i < _drawCount; i++)
-    {
-        _drawIndexBuffer[i] = i;
-    }
-}
-
-void createMultiDrawInstanceData()
-{
-    createCubes();
-    fillBuffers();
-
-    glBindVertexArray(_vao);
-
-    //positions
-
-    GLuint positionsBufferId = 0;
-    auto positionsSize = _vertices.size() * 3 * sizeof(float) * _objectCount;
-    glCreateBuffers(1, &positionsBufferId);
-    glBindBuffer(GL_ARRAY_BUFFER, positionsBufferId);
-    glNamedBufferData(positionsBufferId, positionsSize, _positionsBuffer, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-    //texCoords
-
-    GLuint texCoordsBufferId = 0;
-    auto texCoordsSize = _vertices.size() * 2 * sizeof(float) * _objectCount;
-    glCreateBuffers(1, &texCoordsBufferId);
-    glBindBuffer(GL_ARRAY_BUFFER, texCoordsBufferId);
-    glNamedBufferData(texCoordsBufferId, texCoordsSize, _texCoordsBuffer, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
-
-    //drawID
-
-    GLuint drawIndexBufferId;
-    glCreateBuffers(1, &drawIndexBufferId);
-    glBindBuffer(GL_ARRAY_BUFFER, drawIndexBufferId);
-    glNamedBufferData(drawIndexBufferId, _drawCount * sizeof(GLuint), _drawIndexBuffer, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(2);
-    glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, 0, NULL);
-    glVertexAttribDivisor(2, 1);
-
-    //matrices
-
-    glCreateBuffers(1, &_modelMatricesBufferId);
-    glBindBuffer(GL_ARRAY_BUFFER, _modelMatricesBufferId);
-    glNamedBufferData(_modelMatricesBufferId, sizeof(glm::mat4) * _drawCount, &_modelMatrices[0], GL_DYNAMIC_DRAW);
-
-    for(unsigned int i = 0; i < 4; i++)
-    {
-        glEnableVertexAttribArray(3 + i);
-        glVertexAttribPointer(3 + i, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (const GLvoid*) (sizeof(GLfloat) * i * 4));
-        glVertexAttribDivisor(3 + i, 1);
-    }
-
-    //indices
-
-    GLuint indicesBufferId = 0;
-    auto indicesSize = _indices.size() * sizeof(uint) * _objectCount;
-
-    glCreateBuffers(1, &indicesBufferId);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesBufferId);
-    glNamedBufferData(indicesBufferId, indicesSize, NULL, GL_STATIC_DRAW);
-
-    _indicesBuffer =
-        (uint*) glMapNamedBufferRange(
-            indicesBufferId,
-            0,
-            indicesSize,
-            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
-
-    auto indicesCount = _indices.size();
-    for(uint i = 0; i < _objectCount; i++)
-    {
-        for(uint j = 0; j < indicesCount; j++)
-        {
-            auto index = i * indicesCount + j;
-            _indicesBuffer[index] = _indices[j];
-        }
-    }
-
-    glUnmapNamedBuffer(indicesBufferId);
-    glBindVertexArray(0);
-}
-
-void createMultiDrawParameters()
-{
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _multiDrawBufferId);
-
-    auto bufferSize = _objectCount * sizeof(DrawElementsIndirectCommand);
-
-    glBufferStorage(
-        GL_DRAW_INDIRECT_BUFFER,
-        bufferSize,
-        NULL,
-        GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_DYNAMIC_STORAGE_BIT);
-
-    _multiDrawCommands =
-        (DrawElementsIndirectCommand*) glMapBufferRange(
-            GL_DRAW_INDIRECT_BUFFER,
-            0,
-            bufferSize,
-            GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
-
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
-}
-
-void setupMultiDrawParameters()
-{
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _multiDrawBufferId);
-
-    auto indexCount = _indices.size();
-    auto vertexCount = _vertices.size();
-
-    for(uint i = 0; i < _objectCount; i++)
-    {
-        _multiDrawCommands[i].count = indexCount;
-        _multiDrawCommands[i].instanceCount = _instanceCount;
-        _multiDrawCommands[i].firstIndex = 0;
-        _multiDrawCommands[i].baseVertex = i * vertexCount;
-        _multiDrawCommands[i].baseInstance = i * _instanceCount;
-    }
-
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
-}
-
 bool init()
 {
-    if(SDL_Init(SDL_INIT_VIDEO) < 0)
+    if (SDL_Init(SDL_INIT_VIDEO) < 0)
         LOG("SDL could not initialize! SDL_Error: " << SDL_GetError());
 
     TTF_Init();
@@ -598,31 +344,21 @@ bool init()
 
     auto error = FT_Init_FreeType(&freeLib);
 
-    if(error)
+    if (error)
     {
         LOG("SDL could not initialize! SDL_Error: " << SDL_GetError());
     }
 
-    if(!createGLWindow())
+    if (!createGLWindow())
         return false;
 
-    if(!initGL())
+    if (!initGL())
         return false;
 
-    initTexture();
+    initArrayTextures();
+    createCubes(_instanceCount);
     initShader();
     initCamera();
-
-    createModelMatrices(_drawCount);
-    createTextures(_texturesCount);
-    createMaterials();
-
-    createIndirectDrawBuffers();
-    createMultiDrawInstanceData();
-    createMultiDrawParameters();
-    setupMultiDrawParameters();
-
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
     return true;
 }
@@ -637,23 +373,23 @@ void mouseMove(SDL_Event e)
 {
     glm::vec2 mousePos = glm::vec2(e.motion.x, e.motion.y);
 
-    if(!_isMouseDown)
+    if (!_isMouseDown)
     {
         _lastMousePos = mousePos;
         return;
     }
 
-    if(_isMouseDown && length(_mouseDownPos - _lastMousePos) > 5)
+    if (_isMouseDown && length(_mouseDownPos - _lastMousePos) > 5)
         _rotating = true;
 
-    if(!_rotating)
+    if (!_rotating)
     {
         _lastMousePos = mousePos;
         return;
     }
 
-    float dx = (float) (_lastMousePos.x - mousePos.x);
-    float dy = (float) (_lastMousePos.y - mousePos.y);
+    float dx = (float)(_lastMousePos.x - mousePos.x);
+    float dy = (float)(_lastMousePos.y - mousePos.y);
 
     dx *= _rotationSpeed;
     dy *= _rotationSpeed;
@@ -679,15 +415,15 @@ void input()
 {
     SDL_Event e;
 
-    while(SDL_PollEvent(&e) != 0)
+    while (SDL_PollEvent(&e) != 0)
     {
-        switch(e.type)
+        switch (e.type)
         {
         case SDL_QUIT:
             _isRunning = false;
             break;
         case SDL_KEYDOWN:
-            if(e.key.keysym.sym == SDLK_ESCAPE)
+            if (e.key.keysym.sym == SDLK_ESCAPE)
                 _isRunning = false;
             break;
         case SDL_MOUSEBUTTONDOWN:
@@ -708,8 +444,8 @@ void input()
     }
 }
 
-float t = 0.00f;
-float i = 0.00f;
+float t = 0.0f;
+float i = 0.01f;
 
 void printUniformBlocks()
 {
@@ -723,8 +459,7 @@ void printUniformBlocks()
 
     std::cout << "found " << numBlocks << " block in shader" << std::endl;
 
-    for(int blockIx = 0; blockIx < numBlocks; blockIx++)
-    {
+    for (int blockIx = 0; blockIx < numBlocks; blockIx++) {
         glGetActiveUniformBlockiv(id, blockIx, GL_UNIFORM_BLOCK_NAME_LENGTH, &nameLen);
 
         std::vector<GLchar> name;
@@ -736,61 +471,20 @@ void printUniformBlocks()
 
     }
 
-    for(unsigned int il = 0; il < nameList.size(); il++)
-    {
+    for (unsigned int il = 0; il < nameList.size(); il++) {
         std::cout << "Block name: " << nameList[il] << std::endl;
     }
 
 }
 
-float height = 0.1f;
-bool isDecreasingHeight = false;
-
-void updateModelMatrices()
-{
-    auto size = _modelMatrices.size();
-    for(auto i = 0; i < size; i++)
-    {
-        int shouldChange = glm::round(randf(0, 1));
-        if(shouldChange)
-        {
-            _modelMatrices[i][3][1] += height;
-            _updatedModelMatricesIndices.push_back(i);
-        }
-    }
-
-    if(isDecreasingHeight)
-        height -= 0.01f;
-    else
-        height += 0.01f;
-
-    if(height >= 0.5f)
-        isDecreasingHeight = true;
-    else if(height <= -0.5f)
-        isDecreasingHeight = false;
-}
-
-void updateModelMatricesBuffer()
-{
-    glBindBuffer(GL_ARRAY_BUFFER, _modelMatricesBufferId);
-    auto matrixSize = sizeof(glm::mat4);
-
-    for(auto i = 0; i < _updatedModelMatricesIndices.size(); i++)
-    {
-        auto index = _updatedModelMatricesIndices[i];
-        auto offset = index * matrixSize;
-        glNamedBufferSubData(_modelMatricesBufferId, offset, matrixSize, &_modelMatrices[index]);
-    }
-}
-
 void update()
 {
-    if(_camera == nullptr)
+    if (_camera == nullptr)
         return;
 
     auto x = glm::cos(t);
     auto z = glm::sin(t);
-
+    
     t += i;
 
     auto pos = glm::vec3(x, 0.2f, z) * 10.0f;
@@ -799,38 +493,99 @@ void update()
 
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
 
-    updateModelMatrices();
+    //if (_transformChanged)
+    //{
+    //    GLint blockSize;
 
-    stopwatch::MeasureInMilliseconds([&] {
-        updateModelMatricesBuffer();
-    }, "updateModelMatricesBuffer");
+    //    auto id = _shader->getId();
+
+    //    GLuint blockIndex = glGetUniformBlockIndex(id, "TransformsBlock");
+
+    //    glGetActiveUniformBlockiv(id, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
+
+    //    //GLubyte * blockBuffer = (GLubyte *)malloc(blockSize);
+
+    //    //auto s = _modelMatrices.size();
+
+    //    //for (auto i = 0; i < 1; i++)
+    //    //{
+    //    //    //auto modelMatrix = _modelMatrices[i];
+    //    //    //auto transP = glm::transpose(modelMatrix);
+    //    //    //float* modelMatrixPtr = glm::value_ptr(modelMatrix);
+
+    //    //    GLfloat matx[] =
+    //    //    {
+    //    //        1.0f, 0.0f, 0.0f, 0.0f,
+    //    //        0.0f, 1.0f, 0.0f, 0.0f,
+    //    //        0.0f, 0.0f, 1.0f, 0.0f,
+    //    //        0.0f, 0.0f, 0.0f, 1.0f
+    //    //    };
+
+    //    //    //memcpy(blockBuffer + 64 * i, matx, 64);
+    //    //    memcpy(blockBuffer + 64 * i, &_modelMatrices[0], 64);
+    //    //}
+
+    //    glBindBuffer(GL_UNIFORM_BUFFER, _transformsUbo);
+    //    //std::cout << glewGetErrorString(glGetError()) << std::endl;
+    //    glBufferData(GL_UNIFORM_BUFFER, blockSize, &_modelMatrices[0], GL_DYNAMIC_DRAW);
+    //    //std::cout << glewGetErrorString(glGetError()) << std::endl;
+    //    _transformChanged = false;
+    //}
 }
 
 void render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    _shader->getUniform(0).set(_projectionMatrix * _viewMatrix);
+    _shader->getUniform(3).set(_textureArrayIds);
 
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _multiDrawBufferId);
-    glBindVertexArray(_vao);
-    glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, NULL, _objectCount, 0);
-    glBindVertexArray(0);
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
+    for (int i = 0; i < 5; i++)
+    {
+        _shader->getUniform(0).set(_projectionMatrix * _viewMatrix * _modelMatrices[i]);
+        _shader->getUniform(1).set(i);
+        _geometry->render(_instanceCount, _modelMatrices);
+    }
 }
 
 void loop()
 {
-    while(_isRunning)
+    Uint32 now = 0;
+    Uint32 last = SDL_GetTicks();
+    double dt = 0;
+    double processedTime = 0.0;
+    unsigned int frames = 0;
+
+    Uint32 inputCost = 0;
+    Uint32 updateCost = 0;
+    Uint32 renderCost = 0;
+
+    while (_isRunning)
     {
+        now = SDL_GetTicks();
+        dt = (double)(now - last) / 1000.0;
+        last = now;
+
         input();
         update();
 
-        //stopwatch::MeasureInMilliseconds([] 
-        //{
         render();
         SDL_GL_SwapWindow(_window);
-        //}, "render");
+        //std::cout << s * 1000 << std::endl;
+
+        //printUniformBlocks();
+
+        //system("pause");
+
+        frames++;
+        processedTime += dt;
+
+        if (processedTime > 1.0f)
+        {
+            frames = 0;
+            processedTime -= 1.0;
+        }
+
+        //system("pause");
     }
 }
 
@@ -852,21 +607,16 @@ void release()
 
 int main(int argc, char* args[])
 {
-    std::srand(std::time(0));
-
-    _texturesCount = 100;
-    _materialsCount = 100;
-    _objectCount = 10;
-    _instanceCount = 3;
-    _drawCount = _instanceCount * _objectCount;
-
-    if(!init())
+    if (!init())
         return -1;
 
     _shader->bind();
 
+    _geometry->bind();
+
     loop();
 
+    _geometry->unbind();
     _shader->unbind();
 
     release();

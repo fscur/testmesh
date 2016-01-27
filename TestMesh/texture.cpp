@@ -86,15 +86,11 @@ texture* texture::fromFile(std::string fileName)
     SDL_InvertSurface(surface);
 
     GLuint id, width, height;
-    glGenTextures(1, &id);
 
     width = surface->w;
     height = surface->h;
 
-    // "Bind" the newly created texture : all future texture functions will modify this texture
-    glBindTexture(GL_TEXTURE_2D, id);
-
-    GLuint format = 0;
+    auto format = 0;
     switch (surface->format->BitsPerPixel)
     {
     case 24:
@@ -113,27 +109,21 @@ texture* texture::fromFile(std::string fileName)
         break;
     }
 
-    // Give the image to OpenGL
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, format, GL_UNSIGNED_BYTE, surface->pixels);
-
-    // Give the image to OpenGL
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, format, GL_UNSIGNED_BYTE, surface->pixels);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glGenerateMipmap(GL_TEXTURE_2D);
-
-    SDL_FreeSurface(surface);
-
-    auto t = new texture(id, width, height);
+    auto t = new texture(0, width, height);
     t->_textureType = GL_TEXTURE_2D;
+    t->_dataFormat = format;
+    t->_dataType = GL_UNSIGNED_BYTE;
 
-    GLuint64 handle = glGetTextureHandleARB(id);
-    glMakeTextureHandleResidentARB(handle);
+    auto totalBytes = surface->format->BitsPerPixel / 8;
+    auto data = malloc(surface->w * surface->h * totalBytes);
+    memcpy(data, surface->pixels, surface->w * surface->h * totalBytes);
 
-    t->_handle = handle;
+    t->_data = (unsigned char*)data;
+
+    //GLuint64 handle = glGetTextureHandleARB(id);
+    //glMakeTextureHandleResidentARB(handle);
+
+    //t->_handle = handle;
 
     return t;
 }

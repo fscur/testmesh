@@ -23,7 +23,7 @@ public:
     void Restart();
     const double GetElapsedSeconds();
 
-    static const double MeasureInSeconds(const std::function<void(void)> &function)
+    static const double Measure(const std::function<void(void)> &function)
     {
         auto watch = stopwatch();
         watch.Start();
@@ -33,7 +33,7 @@ public:
         return watch.GetElapsedSeconds();
     }
 
-    static const double MeasureInSeconds(const std::function<void(void)> &function, const std::string &functionName)
+    static const double Measure(const std::function<void(void)> &function, const std::string &functionName)
     {
         auto watch = stopwatch();
         watch.Start();
@@ -45,25 +45,6 @@ public:
         console::WriteLine(msg + std::to_string(elapsedSeconds));
 
         return elapsedSeconds;
-    }
-
-    static const double MeasureInMilliseconds(const std::function<void(void)> &function)
-    {
-        return MeasureInSeconds(function) * 1000;
-    }
-
-    static const double MeasureInMilliseconds(const std::function<void(void)> &function, const std::string &functionName)
-    {
-        auto watch = stopwatch();
-        watch.Start();
-        function();
-        watch.Stop();
-
-        auto msg = functionName + " took: ";
-        auto elapsedMilliseconds = watch.GetElapsedSeconds() * 1000;
-        console::WriteLine(msg + std::to_string(elapsedMilliseconds));
-
-        return elapsedMilliseconds;
     }
 };
 
