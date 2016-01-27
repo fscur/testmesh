@@ -547,6 +547,11 @@ void createMultiDrawInstanceData()
     glBindVertexArray(0);
 }
 
+void mapModelMatricesBuffer()
+{
+
+}
+
 void createMultiDrawParameters()
 {
     glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _multiDrawBufferId);
@@ -619,6 +624,7 @@ bool init()
 
     createIndirectDrawBuffers();
     createMultiDrawInstanceData();
+    mapModelMatricesBuffer();
     createMultiDrawParameters();
     setupMultiDrawParameters();
 
