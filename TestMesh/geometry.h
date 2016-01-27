@@ -3,7 +3,7 @@
 
 #include "TestMesh.h"
 #include "vertex.h"
-#include <GL/glew.h>
+#include <GL\glew.h>
 #include <vector>
 
 class geometry
@@ -35,7 +35,7 @@ public:
 
     ~geometry();
     static geometry* create(std::vector<vertex> &vertices, std::vector<uint> &indices);
-    void render();
+    void render(); 
 };
 
 #endif

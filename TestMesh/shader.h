@@ -26,7 +26,8 @@ public:
         return u;
     }
 
-	void set(GLuint value) { glUniform1i(_location, value); }
+    void set(GLuint value) { glUniform1ui(_location, value); }
+	void set(GLint value) { glUniform1i(_location, value); }
 	void set(GLfloat value) { glUniform1f(_location, value); }
 	void set(color value) { glUniform4f(_location, value.R, value.G, value.B, value.A); }
 	void set(glm::mat3 value) { glUniformMatrix3fv(_location, 1, GL_FALSE, &value[0][0]); }
@@ -53,7 +54,7 @@ private:
     std::string _gFile;
 	
 	std::vector<std::string> _attributes;
-    std::map<std::string, uniform>* _uniforms;
+    std::map<uint, uniform>* _uniforms;
 
 private:
     static std::string loadshaderFile(const std::string fileName);
@@ -72,8 +73,8 @@ public:
     void initAttribs();
 
     void addAttribute(std::string name);
-	void addUniform(std::string name);
-    uniform getUniform(std::string name);
+	void addUniform(std::string name, uint id);
+    uniform getUniform(uint id);
 
     void bind();
     void unbind();

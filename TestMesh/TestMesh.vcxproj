@@ -92,6 +92,7 @@
     <ClInclude Include="color.h" />
     <ClInclude Include="console.h" />
     <ClInclude Include="geometry.h" />
+    <ClInclude Include="material.h" />
     <ClInclude Include="mathUtils.h" />
     <ClInclude Include="octree.h" />
     <ClInclude Include="path.h" />
