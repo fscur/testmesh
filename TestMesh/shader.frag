@@ -3,16 +3,20 @@
 
 struct materialData
 {
-	vec4 diffuse;				//16 bytes
-	vec4 specular;				//16 bytes
-	sampler2D diffuseTexture;	//8 bytes
-	sampler2D normalTexture;	//8 bytes
+    vec4 diffuse;
+    //16 bytes
+    vec4 specular;
+    //16 bytes
+    sampler2D diffuseTexture;
+    //8 bytes
+    sampler2D normalTexture;
+    //8 bytes
 };
 
 //uniform block
 layout (std140, binding = 0) uniform MaterialsLibraryBlock
 {
-	materialData items[100];
+    materialData items[100];
 } materialsLibrary;
 
 struct drawMaterialData
@@ -25,7 +29,7 @@ struct drawMaterialData
 
 layout (std140, binding = 1) uniform DrawMaterialsBlock
 {
-	drawMaterialData items[1000];
+    drawMaterialData items[1000];
 } drawMaterials;
 
 in vec3 fragPosition;
@@ -35,10 +39,9 @@ out vec4 fragColor;
 
 void main(void)
 {
-	drawMaterialData drawMatData = drawMaterials.items[fragDrawId];
-	materialData mat = materialsLibrary.items[drawMatData.drawMaterial1];
-	//vec4 diffuseTextureColor = texture(mat.diffuseTexture, fragTexCoord);
-	fragColor = mat.diffuse;
-
-	//fragColor = vec4(1.0);
+    drawMaterialData drawMatData = drawMaterials.items[fragDrawId];
+    materialData mat = materialsLibrary.items[drawMatData.drawMaterial1];
+    //vec4 diffuseTextureColor = texture(mat.diffuseTexture, fragTexCoord);
+    fragColor = mat.diffuse;
+    //fragColor = vec4(1.0);
 }
