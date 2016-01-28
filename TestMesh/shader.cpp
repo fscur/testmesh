@@ -28,6 +28,9 @@ std::string shader::loadshaderFile(const std::string fileName)
 
 bool shader::validateshader(GLuint shader, const std::string file)
 {
+    GLint success = 0;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+
     const unsigned int BUFFER_SIZE = 512;
     char buffer[BUFFER_SIZE];
     memset(buffer, 0, BUFFER_SIZE);
@@ -36,12 +39,9 @@ bool shader::validateshader(GLuint shader, const std::string file)
     glGetShaderInfoLog(shader, BUFFER_SIZE, &length, buffer); // Ask OpenGL to give us the log associated with the shader
 
     if (length > 0) // If we have any information to display
-    {
-        std::cout << "shader " << shader << " (" << (file.c_str() ? file : "") << ") compile error: " << buffer << std::endl; // Output the information
-        return false;
-    }
+        std::cout << "shader " << shader << " (" << (file.c_str() ? file : "") << ") compile info:\n" << buffer << std::endl; // Output the information
 
-    return true;
+    return success == GL_TRUE;
 }
 
 bool shader::validateProgram(GLuint program)
@@ -53,21 +53,22 @@ bool shader::validateProgram(GLuint program)
 
     glGetProgramInfoLog(program, BUFFER_SIZE, &length, buffer); // Ask OpenGL to give us the log associated with the program
     if (length > 0) // If we have any information to display
-    {
-        std::cout << "Program " << program << " link error: " << buffer << std::endl; // Output the information
-        return false;
-    }
+        std::cout << "Program " << program << " link info:\n" << buffer << std::endl; // Output the information
 
-    glValidateProgram(program); // Get OpenGL to try validating the program
-    GLint status;
-    glGetProgramiv(program, GL_VALIDATE_STATUS, &status); // Find out if the shader program validated correctly
-    if (status == GL_FALSE) // If there was a problem validating
-    {
-        std::cout << "Error validating shader " << program << std::endl; // Output which program had the error
-        return false;
-    }
+    //This should be called before drawing to see if the current OpenGL state is correct for this shader (also, should be only called when debugging):
+    //glValidateProgram(program); // Get OpenGL to try validating the program
+    //GLint status;
+    //glGetProgramiv(program, GL_VALIDATE_STATUS, &status); // Find out if the shader program validated correctly
+    //if (status == GL_FALSE) // If there was a problem validating
+    //{
+    //    std::cout << "Error validating shader " << program << std::endl; // Output which program had the error
+    //    return false;
+    //}
 
-    return true;
+    GLint isLinked = 0;
+    glGetProgramiv(program, GL_LINK_STATUS, &isLinked);
+
+    return isLinked == GL_TRUE;
 }
 
 shader::shader(std::string name, std::string vFile, std::string fFile)
@@ -123,7 +124,6 @@ bool shader::init()
         LOG(_name);
         return false;
     }
-
 
     return true;
 }

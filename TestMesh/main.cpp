@@ -316,12 +316,26 @@ void initArrayTextures()
         glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &id);
         glTextureParameteri(id, GL_TEXTURE_SPARSE_ARB, GL_TRUE);
 
+        glActiveTexture(GL_TEXTURE0 + i);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, id);
+
         glTextureStorage3D(id,
             1,
             GL_RGBA8,
             tex->getWidth(),
             tex->getHeight(),
-            10);
+            2048);
+
+        glTexPageCommitmentARB(
+            GL_TEXTURE_2D_ARRAY,
+            0,
+            0,
+            0,
+            0,
+            tex->getWidth(),
+            tex->getHeight(),
+            1,
+            GL_TRUE);
 
         glTextureSubImage3D(id,
             0,
