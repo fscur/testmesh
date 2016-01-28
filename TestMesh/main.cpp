@@ -314,6 +314,8 @@ void initArrayTextures()
         auto tex = data[i % 5];
         GLuint id;
         glCreateTextures(GL_TEXTURE_2D_ARRAY, 1, &id);
+        glTextureParameteri(id, GL_TEXTURE_SPARSE_ARB, GL_TRUE);
+
         glTextureStorage3D(id,
             1,
             GL_RGBA8,
@@ -350,6 +352,23 @@ void initArrayTextures()
             glBindTexture(GL_TEXTURE_2D_ARRAY, id);
             _textureArrayUnits.push_back(i);
         }
+    }
+
+    GLint numPages = 0;
+    glGetInternalformativ(GL_TEXTURE_2D_ARRAY, GL_RGBA8, GL_NUM_VIRTUAL_PAGE_SIZES_ARB, sizeof(GLint), &numPages);
+    auto pagesSize = sizeof(GLint) * numPages;
+
+    auto pagesSizeX = new GLint[numPages];
+    auto pagesSizeY = new GLint[numPages];
+    auto pagesSizeZ = new GLint[numPages];
+
+    glGetInternalformativ(GL_TEXTURE_2D_ARRAY, GL_RGBA8, GL_VIRTUAL_PAGE_SIZE_X_ARB, pagesSize, (GLint*) pagesSizeX);
+    glGetInternalformativ(GL_TEXTURE_2D_ARRAY, GL_RGBA8, GL_VIRTUAL_PAGE_SIZE_Y_ARB, pagesSize, (GLint*) pagesSizeY);
+    glGetInternalformativ(GL_TEXTURE_2D_ARRAY, GL_RGBA8, GL_VIRTUAL_PAGE_SIZE_Z_ARB, pagesSize, (GLint*) pagesSizeZ);
+
+    for(auto i = 0; i < numPages; i++)
+    {
+        std::cout << "    " << pagesSizeX[i] << " X " << pagesSizeY[i] << " X " << pagesSizeZ[i] << std::endl;
     }
 }
 
@@ -585,40 +604,17 @@ void render()
 
 void loop()
 {
-    Uint32 now = 0;
-    Uint32 last = SDL_GetTicks();
-    double dt = 0;
-    double processedTime = 0.0;
-    unsigned int frames = 0;
-
-    Uint32 inputCost = 0;
-    Uint32 updateCost = 0;
-    Uint32 renderCost = 0;
-
     while(_isRunning)
     {
-        now = SDL_GetTicks();
-        dt = (double) (now - last) / 1000.0;
-        last = now;
-
         input();
         update();
 
-        auto seconds = stopwatch::Measure([&]
-        {
+        //auto seconds = stopwatch::Measure([&]
+        //{
             render();
             SDL_GL_SwapWindow(_window);
-        });
-        std::cout << seconds * 1000 << std::endl;
-
-        frames++;
-        processedTime += dt;
-
-        if(processedTime > 1.0f)
-        {
-            frames = 0;
-            processedTime -= 1.0;
-        }
+        //});
+        //std::cout << seconds * 1000 << std::endl;
     }
 }
 
