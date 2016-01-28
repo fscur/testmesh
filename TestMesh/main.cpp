@@ -63,11 +63,13 @@ float _rotationSpeed = 0.01f;
 GLuint _materialsUbo;
 GLuint _transformsUbo;
 
-std::vector<GLint> _textureArrayIds;
+std::vector<GLint> _textureArrayUnits;
+std::vector<GLuint64> _textureArrayHandles;
+bool _hasBindlessTexturesExtension = false;
 
 float randf(float fMin, float fMax)
 {
-    float f = (double)rand() / RAND_MAX;
+    float f = (double) rand() / RAND_MAX;
     return fMin + f * (fMax - fMin);
 }
 
@@ -87,7 +89,7 @@ bool createGLWindow()
         768,
         SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
 
-    if (_window == NULL)
+    if(_window == NULL)
     {
         LOG("Window could not be created! SDL_Error: " << SDL_GetError());
         return false;
@@ -105,7 +107,7 @@ bool createGLWindow()
 
     _glContext = SDL_GL_CreateContext(_window);
 
-    if (!_glContext)
+    if(!_glContext)
     {
         LOG("Could not create context:" << SDL_GetError());
         return false;
@@ -115,7 +117,7 @@ bool createGLWindow()
 
     GLenum glewInitStatus = glewInit();
 
-    if (glewInitStatus != GLEW_OK)
+    if(glewInitStatus != GLEW_OK)
     {
         LOG("Error" << glewGetErrorString(glewInitStatus))
             return false;
@@ -144,7 +146,7 @@ geometry* createCube()
     {
         uint index = -1;
 
-        if (_octree->insert(vertex, index))
+        if(_octree->insert(vertex, index))
             vertices.push_back(vertex);
 
         indices.push_back(index);
@@ -222,7 +224,7 @@ void createMaterials(uint n)
     _materials.push_back(
         new material(color(0.2f, 0.0f, 0.2f, 1.0f), color(1.0f, 0.0f, 0.0f, 1.0f), _diffuseTextures[0], _normalTextures[0]));
 
-    for (auto i = 0; i < n -2; i++)
+    for(auto i = 0; i < n - 2; i++)
     {
         auto r = rand() % _texturesCount;
 
@@ -232,7 +234,7 @@ void createMaterials(uint n)
 
 void createTextures(uint n)
 {
-    for (auto i = 0; i < n; i++)
+    for(auto i = 0; i < n; i++)
     {
         _diffuseTextures.push_back(texture::fromFile("diffuse.bmp"));
         _normalTextures.push_back(texture::fromFile("normal.bmp"));
@@ -241,13 +243,13 @@ void createTextures(uint n)
 
 void createModelMatrices(uint n)
 {
-    for (auto v = 0; v < n; v++)
+    for(auto v = 0; v < n; v++)
     {
         auto mat = glm::mat4(
             1.0f, 0.0f, 0.0f, 0.0f,
             0.0f, 1.0f, 0.0f, 0.0f,
             0.0f, 0.0f, 1.0f, 0.0f,
-            (float)randf(-0.5f, 0.5f) * 10.0f, (float)randf(-0.5f, 0.5f) * 10.0f, (float)randf(-0.5f, 0.5f) * 10.0f, 1.0f);
+            (float) randf(-0.5f, 0.5f) * 10.0f, (float) randf(-0.5f, 0.5f) * 10.0f, (float) randf(-0.5f, 0.5f) * 10.0f, 1.0f);
 
         _modelMatrices.push_back(mat);
     }
@@ -280,6 +282,24 @@ void initTexture()
     //_texture = texture::fromFile("C:\\test.bmp");
 }
 
+void checkAvailableGlExtensions()
+{
+    const GLubyte* extension = nullptr;
+    auto i = 0;
+    extension = glGetStringi(GL_EXTENSIONS, i++);
+    auto extensionsAvailable = std::vector<GLubyte*>();
+    while(extension != NULL)
+    {
+        auto ex = std::string((char*) extension);
+        if(ex == "GL_ARB_bindless_texture")
+        {
+            _hasBindlessTexturesExtension = true;
+            break;
+        }
+        extension = glGetStringi(GL_EXTENSIONS, i++);
+    }
+}
+
 void initArrayTextures()
 {
     auto data = new texture*[5];
@@ -289,7 +309,7 @@ void initArrayTextures()
     data[3] = texture::fromFile("E.png");
     data[4] = texture::fromFile("O.png");
 
-    for (int i = 0; i < 5; i++)
+    for(int i = 0; i < 5; i++)
     {
         auto tex = data[i % 5];
         GLuint id;
@@ -301,10 +321,7 @@ void initArrayTextures()
             tex->getHeight(),
             10);
 
-        glActiveTexture(GL_TEXTURE0 + i);
-        glBindTexture(GL_TEXTURE_2D_ARRAY, id);
-
-        glTexSubImage3D(GL_TEXTURE_2D_ARRAY,
+        glTextureSubImage3D(id,
             0,
             0, 0,
             0,
@@ -315,13 +332,24 @@ void initArrayTextures()
             tex->getDataType(),
             tex->getData());
 
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+        glTextureParameteri(id, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTextureParameteri(id, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTextureParameteri(id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTextureParameteri(id, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glGenerateTextureMipmap(id);
 
-        _textureArrayIds.push_back(i);
+        if(_hasBindlessTexturesExtension)
+        {
+            auto handle = glGetTextureHandleARB(id);
+            glMakeTextureHandleResidentARB(handle);
+            _textureArrayHandles.push_back(handle);
+        }
+        else
+        {
+            glActiveTexture(GL_TEXTURE0 + i);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, id);
+            _textureArrayUnits.push_back(i);
+        }
     }
 }
 
@@ -336,7 +364,7 @@ void initCamera()
 
 bool init()
 {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0)
+    if(SDL_Init(SDL_INIT_VIDEO) < 0)
         LOG("SDL could not initialize! SDL_Error: " << SDL_GetError());
 
     TTF_Init();
@@ -344,21 +372,24 @@ bool init()
 
     auto error = FT_Init_FreeType(&freeLib);
 
-    if (error)
+    if(error)
     {
         LOG("SDL could not initialize! SDL_Error: " << SDL_GetError());
     }
 
-    if (!createGLWindow())
+    if(!createGLWindow())
         return false;
 
-    if (!initGL())
+    if(!initGL())
         return false;
 
+    checkAvailableGlExtensions();
     initArrayTextures();
     createCubes(_instanceCount);
     initShader();
     initCamera();
+
+    SDL_GL_SetSwapInterval(0);
 
     return true;
 }
@@ -373,23 +404,23 @@ void mouseMove(SDL_Event e)
 {
     glm::vec2 mousePos = glm::vec2(e.motion.x, e.motion.y);
 
-    if (!_isMouseDown)
+    if(!_isMouseDown)
     {
         _lastMousePos = mousePos;
         return;
     }
 
-    if (_isMouseDown && length(_mouseDownPos - _lastMousePos) > 5)
+    if(_isMouseDown && length(_mouseDownPos - _lastMousePos) > 5)
         _rotating = true;
 
-    if (!_rotating)
+    if(!_rotating)
     {
         _lastMousePos = mousePos;
         return;
     }
 
-    float dx = (float)(_lastMousePos.x - mousePos.x);
-    float dy = (float)(_lastMousePos.y - mousePos.y);
+    float dx = (float) (_lastMousePos.x - mousePos.x);
+    float dy = (float) (_lastMousePos.y - mousePos.y);
 
     dx *= _rotationSpeed;
     dy *= _rotationSpeed;
@@ -415,15 +446,15 @@ void input()
 {
     SDL_Event e;
 
-    while (SDL_PollEvent(&e) != 0)
+    while(SDL_PollEvent(&e) != 0)
     {
-        switch (e.type)
+        switch(e.type)
         {
         case SDL_QUIT:
             _isRunning = false;
             break;
         case SDL_KEYDOWN:
-            if (e.key.keysym.sym == SDLK_ESCAPE)
+            if(e.key.keysym.sym == SDLK_ESCAPE)
                 _isRunning = false;
             break;
         case SDL_MOUSEBUTTONDOWN:
@@ -459,7 +490,8 @@ void printUniformBlocks()
 
     std::cout << "found " << numBlocks << " block in shader" << std::endl;
 
-    for (int blockIx = 0; blockIx < numBlocks; blockIx++) {
+    for(int blockIx = 0; blockIx < numBlocks; blockIx++)
+    {
         glGetActiveUniformBlockiv(id, blockIx, GL_UNIFORM_BLOCK_NAME_LENGTH, &nameLen);
 
         std::vector<GLchar> name;
@@ -471,7 +503,8 @@ void printUniformBlocks()
 
     }
 
-    for (unsigned int il = 0; il < nameList.size(); il++) {
+    for(unsigned int il = 0; il < nameList.size(); il++)
+    {
         std::cout << "Block name: " << nameList[il] << std::endl;
     }
 
@@ -479,12 +512,12 @@ void printUniformBlocks()
 
 void update()
 {
-    if (_camera == nullptr)
+    if(_camera == nullptr)
         return;
 
     auto x = glm::cos(t);
     auto z = glm::sin(t);
-    
+
     t += i;
 
     auto pos = glm::vec3(x, 0.2f, z) * 10.0f;
@@ -537,9 +570,12 @@ void render()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    _shader->getUniform(3).set(_textureArrayIds);
+    if(_hasBindlessTexturesExtension)
+        _shader->getUniform(3).set(_textureArrayHandles);
+    else
+        _shader->getUniform(3).set(_textureArrayUnits);
 
-    for (int i = 0; i < 5; i++)
+    for(int i = 0; i < 5; i++)
     {
         _shader->getUniform(0).set(_projectionMatrix * _viewMatrix * _modelMatrices[i]);
         _shader->getUniform(1).set(i);
@@ -559,33 +595,30 @@ void loop()
     Uint32 updateCost = 0;
     Uint32 renderCost = 0;
 
-    while (_isRunning)
+    while(_isRunning)
     {
         now = SDL_GetTicks();
-        dt = (double)(now - last) / 1000.0;
+        dt = (double) (now - last) / 1000.0;
         last = now;
 
         input();
         update();
 
-        render();
-        SDL_GL_SwapWindow(_window);
-        //std::cout << s * 1000 << std::endl;
-
-        //printUniformBlocks();
-
-        //system("pause");
+        auto seconds = stopwatch::Measure([&]
+        {
+            render();
+            SDL_GL_SwapWindow(_window);
+        });
+        std::cout << seconds * 1000 << std::endl;
 
         frames++;
         processedTime += dt;
 
-        if (processedTime > 1.0f)
+        if(processedTime > 1.0f)
         {
             frames = 0;
             processedTime -= 1.0;
         }
-
-        //system("pause");
     }
 }
 
@@ -607,7 +640,7 @@ void release()
 
 int main(int argc, char* args[])
 {
-    if (!init())
+    if(!init())
         return -1;
 
     _shader->bind();
