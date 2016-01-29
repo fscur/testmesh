@@ -65,8 +65,11 @@ SDL_Window* _window;
 SDL_GLContext _glContext;
 FT_Library freeLib;
 
+const uint TRIPPLE_BUFFER = 3;
+
 std::vector<geometry*> _geometries;
-std::vector<glm::mat4> _modelMatrices;
+//std::vector<glm::mat4> _modelMatrices;
+glm::mat4* _modelMatrices;
 std::vector<int> _updatedModelMatricesIndices;
 
 std::vector<material*> _materialsLibrary;
@@ -82,19 +85,23 @@ uint _objectCount;
 uint _instanceCount;
 uint _drawCount;
 
-uint _multiDrawBufferId;
+uint _mdiCmdBufferId;
 uint _vao;
 
 std::vector<vertex> _vertices;
 std::vector<uint> _indices;
+
+uint _modelMatricesBufferId = 0;
+uint _positionsBufferId = 0;
+uint _texCoordsBufferId = 0;
+uint _drawIndexBufferId = 0;
+uint _indicesBufferId = 0;
 
 float* _positionsBuffer;
 float* _texCoordsBuffer;
 float* _normalsBuffer;
 uint* _drawIndexBuffer;
 uint* _indicesBuffer;
-
-uint _modelMatricesBufferId;
 
 shader* _shader;
 texture* _texture;
@@ -357,43 +364,8 @@ void createModelMatrices(uint n)
         //    0.0f, 0.0f, 1.0f, 0.0f,
         //    0.0f, 0.0f, 0.0f, 1.0f);
 
-        _modelMatrices.push_back(mat);
+        _modelMatrices[v] = mat;
     }
-
-    /*auto mat = glm::mat4(
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        -2.0f, 0.0f, 0.0f, 1.0f);
-
-    _modelMatrices.push_back(mat);
-
-
-     mat = glm::mat4(
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f);
-
-    _modelMatrices.push_back(mat);
-
-
-     mat = glm::mat4(
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        2.0f, 0.0f, 0.0f, 1.0f);
-
-    _modelMatrices.push_back(mat);
-
-
-     mat = glm::mat4(
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        5.0f, 0.0f, 0.0f, 1.0f);
-
-    _modelMatrices.push_back(mat);*/
 }
 
 void initShader()
@@ -424,17 +396,13 @@ void initCamera()
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
 }
 
-void createIndirectDrawBuffers()
+void createMDICmdBuffers()
 {
-    glGenBuffers(1, &_multiDrawBufferId);
-    glGenVertexArrays(1, &_vao);
+    glGenBuffers(1, &_mdiCmdBufferId);
 }
 
 void fillBuffers()
 {
-    _positionsBuffer = new GLfloat[_vertices.size() * 3 * _objectCount];
-    _texCoordsBuffer = new GLfloat[_vertices.size() * 2 * _objectCount];
-
     int vIndex = -1;
     int tIndex = -1;
     int nIndex = -1;
@@ -459,79 +427,10 @@ void fillBuffers()
         }
     }
 
-    _drawIndexBuffer = new GLuint[_drawCount];
-
     for(uint i = 0; i < _drawCount; i++)
     {
         _drawIndexBuffer[i] = i;
     }
-}
-
-void createMultiDrawInstanceData()
-{
-    createCubes();
-    fillBuffers();
-
-    glBindVertexArray(_vao);
-
-    //positions
-
-    GLuint positionsBufferId = 0;
-    auto positionsSize = _vertices.size() * 3 * sizeof(float) * _objectCount;
-    glCreateBuffers(1, &positionsBufferId);
-    glBindBuffer(GL_ARRAY_BUFFER, positionsBufferId);
-    glNamedBufferData(positionsBufferId, positionsSize, _positionsBuffer, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-    //texCoords
-
-    GLuint texCoordsBufferId = 0;
-    auto texCoordsSize = _vertices.size() * 2 * sizeof(float) * _objectCount;
-    glCreateBuffers(1, &texCoordsBufferId);
-    glBindBuffer(GL_ARRAY_BUFFER, texCoordsBufferId);
-    glNamedBufferData(texCoordsBufferId, texCoordsSize, _texCoordsBuffer, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
-
-    //drawID
-
-    GLuint drawIndexBufferId;
-    glCreateBuffers(1, &drawIndexBufferId);
-    glBindBuffer(GL_ARRAY_BUFFER, drawIndexBufferId);
-    glNamedBufferData(drawIndexBufferId, _drawCount * sizeof(GLuint), _drawIndexBuffer, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(2);
-    glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, 0, NULL);
-    glVertexAttribDivisor(2, 1);
-
-    //matrices
-
-    glCreateBuffers(1, &_modelMatricesBufferId);
-    glBindBuffer(GL_ARRAY_BUFFER, _modelMatricesBufferId);
-    glNamedBufferData(_modelMatricesBufferId, sizeof(glm::mat4) * _drawCount, &_modelMatrices[0], GL_DYNAMIC_DRAW);
-
-    for(unsigned int i = 0; i < 4; i++)
-    {
-        glEnableVertexAttribArray(3 + i);
-        glVertexAttribPointer(3 + i, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (const GLvoid*) (sizeof(GLfloat) * i * 4));
-        glVertexAttribDivisor(3 + i, 1);
-    }
-
-    //indices
-
-    GLuint indicesBufferId = 0;
-    auto indicesSize = _indices.size() * sizeof(uint) * _objectCount;
-
-    glCreateBuffers(1, &indicesBufferId);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indicesBufferId);
-    glNamedBufferData(indicesBufferId, indicesSize, NULL, GL_STATIC_DRAW);
-
-    _indicesBuffer =
-        (uint*) glMapNamedBufferRange(
-            indicesBufferId,
-            0,
-            indicesSize,
-            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
 
     auto indicesCount = _indices.size();
     for(uint i = 0; i < _objectCount; i++)
@@ -542,19 +441,58 @@ void createMultiDrawInstanceData()
             _indicesBuffer[index] = _indices[j];
         }
     }
-
-    glUnmapNamedBuffer(indicesBufferId);
-    glBindVertexArray(0);
 }
 
-void mapModelMatricesBuffer()
+void* newPersistentBuffer(GLuint& bufferId, uint bufferSize)
 {
+    auto persistentMapFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
 
+    glCreateBuffers(1, &bufferId);
+    glBindBuffer(GL_ARRAY_BUFFER, bufferId);
+    glBufferStorage(GL_ARRAY_BUFFER, bufferSize, NULL, persistentMapFlags);
+    return glMapBufferRange(GL_ARRAY_BUFFER, 0, bufferSize, persistentMapFlags);
+}
+
+void createMultiDrawBuffers()
+{
+    glCreateVertexArrays(1, &_vao);
+    glBindVertexArray(_vao);
+
+    auto positionsBufferSize = _vertices.size() * 3 * sizeof(float) * _objectCount;
+    auto texCoordsBufferSize = _vertices.size() * 2 * sizeof(float) * _objectCount;
+    auto drawIndexBufferSize = _drawCount * sizeof(GLuint); // * 3 ?
+    auto indicesBufferSize = _indices.size() * sizeof(uint) * _objectCount;
+    auto modelMatricesBufferSize = sizeof(glm::mat4) * _drawCount;
+
+    _positionsBuffer = (float*) newPersistentBuffer(_positionsBufferId, positionsBufferSize);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    _texCoordsBuffer = (float*) newPersistentBuffer(_texCoordsBufferId, texCoordsBufferSize);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+    _drawIndexBuffer = (uint*) newPersistentBuffer(_drawIndexBufferId, drawIndexBufferSize);
+    glEnableVertexAttribArray(2);
+    glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, 0, NULL);
+    glVertexAttribDivisor(2, 1);
+
+    _modelMatrices = (glm::mat4*) newPersistentBuffer(_modelMatricesBufferId, modelMatricesBufferSize);
+    for(unsigned int i = 0; i < 4; i++)
+    {
+        glEnableVertexAttribArray(3 + i);
+        glVertexAttribPointer(3 + i, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (const GLvoid*) (sizeof(GLfloat) * i * 4));
+        glVertexAttribDivisor(3 + i, 1);
+    }
+
+    _indicesBuffer = (uint*) newPersistentBuffer(_indicesBufferId, indicesBufferSize);
+
+    glBindVertexArray(0);
 }
 
 void createMultiDrawParameters()
 {
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _multiDrawBufferId);
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _mdiCmdBufferId);
 
     auto bufferSize = _objectCount * sizeof(DrawElementsIndirectCommand);
 
@@ -576,7 +514,7 @@ void createMultiDrawParameters()
 
 void setupMultiDrawParameters()
 {
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _multiDrawBufferId);
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _mdiCmdBufferId);
 
     auto indexCount = _indices.size();
     auto vertexCount = _vertices.size();
@@ -618,15 +556,16 @@ bool init()
     initShader();
     initCamera();
 
-    createModelMatrices(_drawCount);
     createTextures(_texturesCount);
     createMaterials();
+    createCubes();
 
-    createIndirectDrawBuffers();
-    createMultiDrawInstanceData();
-    mapModelMatricesBuffer();
+    createMDICmdBuffers();
+    createMultiDrawBuffers();
+    createModelMatrices(_drawCount);
     createMultiDrawParameters();
     setupMultiDrawParameters();
+    fillBuffers();
 
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -754,8 +693,8 @@ bool isDecreasingHeight = false;
 
 void updateModelMatrices()
 {
-    auto size = _modelMatrices.size();
-    for(auto i = 0; i < size; i++)
+    //auto size = _modelMatrices.size();
+    for(auto i = 0; i < _drawCount; i++)
     {
         int shouldChange = glm::round(randf(0, 1));
         if(shouldChange)
@@ -805,11 +744,11 @@ void update()
 
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
 
-    updateModelMatrices();
+    //updateModelMatrices();
 
-    stopwatch::MeasureInMilliseconds([&] {
-        updateModelMatricesBuffer();
-    }, "updateModelMatricesBuffer");
+    //stopwatch::MeasureInMilliseconds([&] {
+    //    updateModelMatricesBuffer();
+    //}, "updateModelMatricesBuffer");
 }
 
 void render()
@@ -818,7 +757,7 @@ void render()
 
     _shader->getUniform(0).set(_projectionMatrix * _viewMatrix);
 
-    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _multiDrawBufferId);
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _mdiCmdBufferId);
     glBindVertexArray(_vao);
     glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, NULL, _objectCount, 0);
     glBindVertexArray(0);
@@ -832,11 +771,11 @@ void loop()
         input();
         update();
 
-        //stopwatch::MeasureInMilliseconds([] 
-        //{
-        render();
-        SDL_GL_SwapWindow(_window);
-        //}, "render");
+        stopwatch::MeasureInMilliseconds([&]
+        {
+            render();
+            SDL_GL_SwapWindow(_window);
+        }, "render");
     }
 }
 
@@ -860,11 +799,12 @@ int main(int argc, char* args[])
 {
     std::srand(std::time(0));
 
-    _texturesCount = 100;
-    _materialsCount = 100;
-    _objectCount = 10;
-    _instanceCount = 3;
+    _texturesCount = 4;
+    _materialsCount = 4;
+    _objectCount = 1;
+    _instanceCount = 1;
     _drawCount = _instanceCount * _objectCount;
+    _modelMatrices = new glm::mat4[_drawCount];
 
     if(!init())
         return -1;
