@@ -75,8 +75,8 @@ std::vector<texture*> _normalTextures;
 
 uint _texturesCount = 2;
 uint _materialsCount = 10;
-uint _objectCount = 3;
-uint _instanceCount = 2;
+uint _objectCount = 100;
+uint _instanceCount = 1000;
 uint _drawCount = _objectCount + _instanceCount;
 
 std::vector<vertex> _vertices;
