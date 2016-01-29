@@ -91,6 +91,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="aabb.h" />
+    <ClInclude Include="bufferLockManager.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="color.h" />
     <ClInclude Include="console.h" />
@@ -107,6 +108,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="aabb.cpp" />
+    <ClCompile Include="bufferLockManager.cpp" />
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="console.cpp" />
     <ClCompile Include="geometry.cpp" />
@@ -122,6 +124,10 @@
   <ItemGroup>
     <None Include="shader.frag" />
     <None Include="shader.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="diffuse.bmp" />
+    <Image Include="normal.bmp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

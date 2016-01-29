@@ -60,6 +60,9 @@
     <ClInclude Include="material.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="bufferLockManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="octree.cpp">
@@ -98,6 +101,9 @@
     <ClCompile Include="stopwatch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="bufferLockManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="shader.frag">
@@ -106,5 +112,13 @@
     <None Include="shader.vert">
       <Filter>Resource Files</Filter>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="diffuse.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="normal.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>
