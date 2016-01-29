@@ -83,6 +83,8 @@ texture* texture::fromFile(std::string fileName)
 {
     SDL_Surface* surface = IMG_Load(fileName.c_str());
 
+    SDL_LockSurface(surface);
+
     SDL_InvertSurface(surface);
 
     GLuint id, width, height;
@@ -119,6 +121,8 @@ texture* texture::fromFile(std::string fileName)
     memcpy(data, surface->pixels, surface->w * surface->h * totalBytes);
 
     t->_data = (unsigned char*)data;
+
+    SDL_UnlockSurface(surface);
 
     //GLuint64 handle = glGetTextureHandleARB(id);
     //glMakeTextureHandleResidentARB(handle);

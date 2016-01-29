@@ -304,6 +304,12 @@ void initArrayTextures()
 {
     auto data = new texture*[5];
     data[0] = texture::fromFile("A.png");
+    //ACTIVATE SUPER GIGANTIC MASTER OF GREAT ENORMOUSITY BLANK TEXTURE:
+    //auto s = 8192;
+    //data[0]->_data = (unsigned char*)malloc(s * s * 4);
+    //memset((void*)data[0]->_data, 0xFF, s * s * 4);
+    //data[0]->_w = s;
+    //data[0]->_h = s;
     data[1] = texture::fromFile("I.png");
     data[2] = texture::fromFile("U.png");
     data[3] = texture::fromFile("E.png");

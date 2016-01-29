@@ -12,7 +12,7 @@
 
 class texture
 {
-private:
+public:
     GLuint _id;
     GLuint _textureType;
     GLuint64 _handle;
@@ -20,7 +20,7 @@ private:
     GLenum _dataType;
     GLenum _dataFormat;
 
-protected:
+public:
     GLuint _w;
     GLuint _h;
 
