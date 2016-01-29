@@ -449,16 +449,16 @@ void* newPersistentBuffer(GLenum bufferType, GLuint& bufferId, uint bufferSize)
 
 void createBuffers()
 {
-    glGenBuffers(1, &_mdiCmdBufferId);
-    glCreateVertexArrays(1, &_vao);
-    glBindVertexArray(_vao);
-
     auto positionsBufferSize = _vertices.size() * 3 * sizeof(float) * _objectCount * TRIPPLE_BUFFER;
     auto texCoordsBufferSize = _vertices.size() * 2 * sizeof(float) * _objectCount * TRIPPLE_BUFFER;
     auto drawIndexBufferSize = _drawCount * sizeof(GLuint) * TRIPPLE_BUFFER;
     auto indicesBufferSize = _indices.size() * sizeof(uint) * _objectCount * TRIPPLE_BUFFER;
     auto modelMatricesBufferSize = sizeof(glm::mat4) * _drawCount * TRIPPLE_BUFFER;
     auto mdiCmdBufferSize = _objectCount * sizeof(DrawElementsIndirectCommand) * TRIPPLE_BUFFER;
+
+    glGenBuffers(1, &_mdiCmdBufferId);
+    glCreateVertexArrays(1, &_vao);
+    glBindVertexArray(_vao);
 
     _positionsBuffer = (float*) newPersistentBuffer(GL_ARRAY_BUFFER, _positionsBufferId, positionsBufferSize);
     glEnableVertexAttribArray(0);
