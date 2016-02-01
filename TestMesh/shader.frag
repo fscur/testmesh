@@ -14,9 +14,9 @@ struct materialData
 };
 
 //uniform block
-layout (std140, binding = 0) uniform MaterialsLibraryBlock
+layout (std140, binding = 0) buffer MaterialsLibraryBlock
 {
-    materialData items[100];
+    materialData items[];
 } materialsLibrary;
 
 in vec3 fragPosition;
