@@ -404,11 +404,6 @@ void initShader()
     _shader->addUniform("vp", 0);
 }
 
-void initTexture()
-{
-    _texture = texture::fromFile("C:\\test.bmp");
-}
-
 void initCamera()
 {
     _camera = new camera();
@@ -604,7 +599,6 @@ bool init()
     if(!initGL())
         return false;
 
-    initTexture();
     initShader();
     initCamera();
 
@@ -847,8 +841,8 @@ int main(int argc, char* args[])
 
     _texturesCount = 100;
     _materialsCount = 100;
-    _objectCount = 10000;
-    _instanceCount = 10;
+    _objectCount = 100;
+    _instanceCount = 1000;
     _drawCount = _instanceCount * _objectCount;
 
     if(!init())
