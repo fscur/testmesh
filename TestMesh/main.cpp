@@ -33,6 +33,16 @@ typedef struct
 }
 mdiCmd;
 
+typedef struct 
+{
+    glm::mat4 m;
+    GLuint materialId;
+    GLuint pad0;
+    GLuint pad1;
+    GLuint pad2;
+}
+drawData;
+
 typedef struct
 {
     float diffuseR;
@@ -60,6 +70,7 @@ std::vector<geometry*> _geometries;
 
 std::vector<material*> _materialsLibrary;
 std::vector<materialData> _materialsBuffer;
+//std::vector<drawData> _drawDataBuffer;
 std::vector<texture*> _diffuseTextures;
 std::vector<texture*> _normalTextures;
 
@@ -80,6 +91,7 @@ uint _modelMatricesBufferId = 0;
 uint _indicesBufferId = 0;
 uint _mdiCmdBufferId = 0;
 uint _materialsBufferId = 0;
+uint _drawDataBufferId = 0;
 
 uint _positionsBufferSize = 0;
 uint _texCoordsBufferSize = 0;
@@ -87,6 +99,7 @@ uint _drawIndexBufferSize = 0;
 uint _indicesBufferSize = 0;
 uint _modelMatricesBufferSize = 0;
 uint _mdiCmdBufferSize = 0;
+uint _drawDataBufferSize = 0;
 
 float* _positionsBuffer;
 float* _texCoordsBuffer;
@@ -95,6 +108,7 @@ uint* _drawIndexBuffer;
 glm::mat4* _modelMatricesBuffer;
 uint* _indicesBuffer;
 mdiCmd* _mdiCmdBuffer;
+drawData* _drawDataBuffer;
 
 shader* _shader;
 texture* _texture;
@@ -300,9 +314,6 @@ void createMaterials()
 
         _materialsBuffer.push_back(data);
     }
-
-    auto id = _shader->getId();
-    
 }
 
 void createTextures(uint n)
@@ -337,6 +348,44 @@ void initCamera()
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
 }
 
+void createDrawDataBuffer()
+{
+ //   _drawDataBuffer = new drawData[_drawCount];
+
+    /*for (auto i = 0; i < _drawCount; i++)
+    {
+        auto x = randf(-0.5f, 0.5f) * 10.0f;
+        auto y = randf(-0.5f, 0.5f) * 10.0f;
+        auto z = randf(-0.5f, 0.5f) * 10.0f;
+
+        auto mat = glm::mat4(
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            x, y, z, 1.0f);
+
+        auto data = drawData();
+
+        data.m = mat;
+        data.materialId = rand() % _materialsCount;
+        data.pad0 = 0;
+        data.pad1 = 0;
+        data.pad2 = 0;
+
+        _drawDataBuffer.push_back(data);
+    }
+
+    glCreateBuffers(1, &_drawDataBufferId);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, _drawDataBufferId);
+    glNamedBufferData(_drawDataBufferId, sizeof(drawData) * _drawCount, &_drawDataBuffer[0], GL_STATIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _drawDataBufferId);*/
+
+    glCreateBuffers(1, &_materialsBufferId);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, _materialsBufferId);
+    glNamedBufferData(_materialsBufferId, sizeof(materialData) * _materialsCount, &_materialsBuffer[0], GL_STATIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _materialsBufferId);
+}
+
 void* newPersistentBuffer(GLenum bufferType, GLuint& bufferId, uint bufferSize)
 {
     auto persistentMapFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
@@ -353,7 +402,7 @@ void createBuffers()
     _texCoordsBufferSize = _vertices.size() * 2 * sizeof(float) * _objectCount;
     _drawIndexBufferSize = _drawCount * sizeof(GLuint);
     _indicesBufferSize = _indices.size() * sizeof(uint) * _objectCount;
-    _modelMatricesBufferSize = sizeof(glm::mat4) * _drawCount;
+    _drawDataBufferSize = _drawCount * sizeof(drawData);
     _mdiCmdBufferSize = _objectCount * sizeof(mdiCmd);
 
     glCreateVertexArrays(1, &_vaoId);
@@ -372,23 +421,27 @@ void createBuffers()
     glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, 0, NULL);
     glVertexAttribDivisor(2, 1);
 
-    _modelMatricesBuffer = (glm::mat4*) newPersistentBuffer(GL_ARRAY_BUFFER, _modelMatricesBufferId, _modelMatricesBufferSize * TRIPPLE_BUFFER);
+    _indicesBuffer = (uint*)newPersistentBuffer(GL_ELEMENT_ARRAY_BUFFER, _indicesBufferId, _indicesBufferSize * TRIPPLE_BUFFER);
+
+    _mdiCmdBuffer = (mdiCmd*)newPersistentBuffer(GL_DRAW_INDIRECT_BUFFER, _mdiCmdBufferId, _mdiCmdBufferSize);
+
+    //_drawDataBuffer = (drawData*)newPersistentBuffer(GL_SHADER_STORAGE_BUFFER, _drawDataBufferId, _drawDataBufferSize);
+
+    /*auto persistentMapFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
+    */
+
+    glCreateBuffers(1, &_drawDataBufferId);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _drawDataBufferId);
+    glBufferStorage(GL_SHADER_STORAGE_BUFFER, _drawDataBufferSize, nullptr, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_DYNAMIC_STORAGE_BIT);
+    _drawDataBuffer = (drawData*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, _drawDataBufferSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
+
+    /*_modelMatricesBuffer = (glm::mat4*) newPersistentBuffer(GL_ARRAY_BUFFER, _modelMatricesBufferId, _modelMatricesBufferSize * TRIPPLE_BUFFER);
     for (unsigned int i = 0; i < 4; i++)
     {
         glEnableVertexAttribArray(3 + i);
         glVertexAttribPointer(3 + i, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (const GLvoid*)(sizeof(GLfloat) * i * 4));
         glVertexAttribDivisor(3 + i, 1);
-    }
-
-    _indicesBuffer = (uint*)newPersistentBuffer(GL_ELEMENT_ARRAY_BUFFER, _indicesBufferId, _indicesBufferSize * TRIPPLE_BUFFER);
-
-    _mdiCmdBuffer = (mdiCmd*)newPersistentBuffer(GL_DRAW_INDIRECT_BUFFER, _mdiCmdBufferId, _mdiCmdBufferSize);
-
-    glCreateBuffers(1, &_materialsBufferId);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, _materialsBufferId);
-    auto size = sizeof(materialData) * _materialsCount;
-    glNamedBufferData(_materialsBufferId, sizeof(materialData) * _materialsCount, &_materialsBuffer[0], GL_STATIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _materialsBufferId);
+    }*/
 }
 
 void fillBuffers()
@@ -418,7 +471,7 @@ void fillBuffers()
     }
 
     for (uint i = 0; i < _drawCount * TRIPPLE_BUFFER; i++)
-        _drawIndexBuffer[i] = rand() % _materialsCount;
+        _drawIndexBuffer[i] = i;
 
     auto indicesCount = _indices.size();
     for (uint i = 0; i < _objectCount * TRIPPLE_BUFFER; i++)
@@ -428,31 +481,6 @@ void fillBuffers()
             auto index = i * indicesCount + j;
             _indicesBuffer[index] = _indices[j];
         }
-    }
-
-    for (auto v = 0; v < _drawCount * TRIPPLE_BUFFER; v++)
-    {
-        auto x = randf(-0.5f, 0.5f) * 10.0f;
-        auto y = randf(-0.5f, 0.5f) * 10.0f;
-        auto z = randf(-0.5f, 0.5f) * 10.0f;
-
-        auto mat = glm::mat4(
-            1.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f,
-            x, y, z, 1.0f);
-
-        /*auto x = 0.0f;
-        auto y = 0.0f;
-        auto z = v * 2.0f;
-
-        auto mat = glm::mat4(
-            1.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f,
-            z, 0.0f, 0.0f, 1.0f);*/
-
-        _modelMatricesBuffer[v] = mat;
     }
 
     auto indexCount = _indices.size();
@@ -465,6 +493,25 @@ void fillBuffers()
         _mdiCmdBuffer[i].firstIndex = 0;
         _mdiCmdBuffer[i].baseVertex = i * vertexCount;
         _mdiCmdBuffer[i].baseInstance = i * _instanceCount;
+    }
+
+    for (auto i = 0; i < _drawCount; i++)
+    {
+        auto x = randf(-0.5f, 0.5f) * 10.0f;
+        auto y = randf(-0.5f, 0.5f) * 10.0f;
+        auto z = randf(-0.5f, 0.5f) * 10.0f;
+
+        auto mat = glm::mat4(
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            x, y, z, 1.0f);
+
+        _drawDataBuffer[i].m = mat;
+        _drawDataBuffer[i].materialId = rand() % _materialsCount;
+        _drawDataBuffer[i].pad0 = 0;
+        _drawDataBuffer[i].pad1 = 0;
+        _drawDataBuffer[i].pad2 = 0;
     }
 }
 
@@ -495,6 +542,8 @@ bool init()
     createTextures(_texturesCount);
     createMaterials();
     createCubes();
+    
+    createDrawDataBuffer();
     
     createBuffers();
     fillBuffers();
@@ -630,12 +679,12 @@ void updateMdiCmdBuffer()
 void updateModelMatricesBuffer()
 {
     //auto size = _modelMatricesBuffer.size();
-    for (auto i = _drawRange * _drawCount; i < _drawCount; i++)
+    for (auto i = 0; i < _drawCount; i++)
     {
         //int shouldChange = glm::round(randf(0, 1));
         //if (shouldChange)
         {
-            _modelMatricesBuffer[i][3][1] += height;
+            _drawDataBuffer[i].m[3][1] += height;
         }
     }
 
@@ -652,7 +701,6 @@ void updateModelMatricesBuffer()
 
 void update()
 {
-
     if (_camera == nullptr)
         return;
 
