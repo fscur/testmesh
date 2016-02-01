@@ -28,7 +28,7 @@ void main(void)
 {
     materialData mat = materials.items[fragDrawId];
     vec4 diffuseTextureColor = texture2D(mat.diffuseTexture, fragTexCoord);
-    fragColor = mat.diffuse;
+    fragColor = mat.diffuse * diffuseTextureColor;
 
     //float d = float(fragDrawId)/8.0;
     //float e = float(drawMatData.drawMaterial1)/3.0;

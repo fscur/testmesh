@@ -73,7 +73,7 @@ std::vector<vertex> _vertices;
 std::vector<uint> _indices;
 
 uint _vaoId = 0;
-uint _positionsBufferId = 0;
+uint _interleavedPositionsTexCoordBufferId = 0;
 uint _texCoordsBufferId = 0;
 uint _drawIndexBufferId = 0;
 uint _modelMatricesBufferId = 0;
@@ -81,14 +81,14 @@ uint _indicesBufferId = 0;
 uint _mdiCmdBufferId = 0;
 uint _materialsBufferId = 0;
 
-uint _positionsBufferSize = 0;
+uint _interleavedPositionsTexCoordBufferSize = 0;
 uint _texCoordsBufferSize = 0;
 uint _drawIndexBufferSize = 0;
 uint _indicesBufferSize = 0;
 uint _modelMatricesBufferSize = 0;
 uint _mdiCmdBufferSize = 0;
 
-float* _positionsBuffer;
+float* _interleavedPositionTexCoordBuffer;
 float* _texCoordsBuffer;
 float* _normalsBuffer;
 uint* _drawIndexBuffer;
@@ -360,32 +360,24 @@ void fillNonPersistentBuffers()
     auto drawIndexBufferSize = _drawCount * TRIPPLE_BUFFER;
     auto indicesCount = _indices.size();
 
-    _positionsBuffer = new float[buffersSize * _vertices.size()];
-    _texCoordsBuffer = new float[buffersSize * _vertices.size()];
+    _interleavedPositionTexCoordBuffer = new float[buffersSize * _vertices.size() * 5];
     _indicesBuffer = new uint[buffersSize * indicesCount];
     _drawIndexBuffer = new uint[drawIndexBufferSize];
 
-    int vIndex = -1;
-    int tIndex = -1;
-    int nIndex = -1;
+    int index = -1;
 
     for(uint i = 0; i < buffersSize; i++)
     {
         for(auto vertex : _vertices)
         {
-            GLfloat x = vertex.GetPosition().x;
-            GLfloat y = vertex.GetPosition().y;
-            GLfloat z = vertex.GetPosition().z;
-
-            _positionsBuffer[++vIndex] = x;
-            _positionsBuffer[++vIndex] = y;
-            _positionsBuffer[++vIndex] = z;
-
-            GLfloat u = vertex.GetTexCoord().x;
-            GLfloat v = vertex.GetTexCoord().y;
-
-            _texCoordsBuffer[++tIndex] = u;
-            _texCoordsBuffer[++tIndex] = v;
+            auto position = vertex.GetPosition();
+            auto texCoord = vertex.GetTexCoord();
+            
+            _interleavedPositionTexCoordBuffer[++index] = position.x;
+            _interleavedPositionTexCoordBuffer[++index] = position.y;
+            _interleavedPositionTexCoordBuffer[++index] = position.z;
+            _interleavedPositionTexCoordBuffer[++index] = texCoord.x;
+            _interleavedPositionTexCoordBuffer[++index] = texCoord.y;
         }
     }
 
@@ -407,23 +399,24 @@ void createNonPersistentBuffers()
     glCreateVertexArrays(1, &_vaoId);
     glBindVertexArray(_vaoId);
 
-    _positionsBufferSize = _vertices.size() * 3 * sizeof(float) * _objectCount;
+    _interleavedPositionsTexCoordBufferSize = _vertices.size() * 5 * sizeof(float) * _objectCount;
     _texCoordsBufferSize = _vertices.size() * 2 * sizeof(float) * _objectCount;
     _drawIndexBufferSize = _drawCount * sizeof(GLuint);
     _indicesBufferSize = _indices.size() * sizeof(uint) * _objectCount;
     auto materialBufferSize = sizeof(materialData) * _materialsCount;
 
-    newNamedBufferData(GL_ARRAY_BUFFER, _positionsBufferId, _positionsBufferSize, _positionsBuffer);
+    auto floatSize = sizeof(float);
+    newNamedBufferData(GL_ARRAY_BUFFER, _interleavedPositionsTexCoordBufferId, _interleavedPositionsTexCoordBufferSize, _interleavedPositionTexCoordBuffer);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-    newNamedBufferData(GL_ARRAY_BUFFER, _texCoordsBufferId, _texCoordsBufferSize, _texCoordsBuffer);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, floatSize * 5, 0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, floatSize * 5, (void*)(floatSize * 3));
+    //floatSize * 5: is the number in bytes for the next ocurrence in the buffer of the beggining of that particular attribute
+    //(void*)(floatSize * 3): is the initial offset for the beggining of that particular attribute. Before the texCoords there are 3 floats (x,y,z) in the buffer
 
     newNamedBufferData(GL_ARRAY_BUFFER, _drawIndexBufferId, _drawIndexBufferSize, _drawIndexBuffer);
     glEnableVertexAttribArray(2);
-    glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, 0, NULL);
+    glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, 0, 0);
     glVertexAttribDivisor(2, 1);
 
     newNamedBufferData(GL_ELEMENT_ARRAY_BUFFER, _indicesBufferId, _indicesBufferSize, _indicesBuffer);
@@ -613,37 +606,6 @@ void input()
     }
 }
 
-void printUniformBlocks()
-{
-    GLint numBlocks;
-    GLint nameLen;
-
-    std::vector<std::string> nameList;
-    auto id = _shader->getId();
-    glGetProgramiv(id, GL_ACTIVE_UNIFORM_BLOCKS, &numBlocks);
-    nameList.reserve(numBlocks);
-
-    std::cout << "found " << numBlocks << " block in shader" << std::endl;
-
-    for(int blockIx = 0; blockIx < numBlocks; blockIx++)
-    {
-        glGetActiveUniformBlockiv(id, blockIx, GL_UNIFORM_BLOCK_NAME_LENGTH, &nameLen);
-
-        std::vector<GLchar> name;
-        name.resize(nameLen);
-        glGetActiveUniformBlockName(id, blockIx, nameLen, NULL, &name[0]);
-
-        nameList.push_back(std::string());
-        nameList.back().assign(name.begin(), name.end() - 1); //Remove the null terminator.
-    }
-
-    for(unsigned int il = 0; il < nameList.size(); il++)
-    {
-        std::cout << "Block name: " << nameList[il] << std::endl;
-    }
-
-}
-
 void updateMdiCmdBuffer()
 {
     for(uint i = 0; i < _objectCount; i++)
@@ -740,7 +702,7 @@ void release()
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(0);
 
-    glDeleteBuffers(1, &_positionsBufferId);
+    glDeleteBuffers(1, &_interleavedPositionsTexCoordBufferId);
     glDeleteBuffers(1, &_texCoordsBufferId);
     glDeleteBuffers(1, &_modelMatricesBufferId);
     glDeleteBuffers(1, &_drawIndexBufferId);
@@ -748,7 +710,7 @@ void release()
     glDeleteBuffers(1, &_mdiCmdBufferId);
     glDeleteBuffers(1, &_materialsBufferId);
 
-    delete[] _positionsBuffer;
+    delete[] _interleavedPositionTexCoordBuffer;
     delete[] _texCoordsBuffer;
     delete[] _normalsBuffer;
     delete[] _drawIndexBuffer;
