@@ -14,10 +14,10 @@ struct materialData
 };
 
 //uniform block
-layout (std140, binding = 0) buffer MaterialsLibraryBlock
+layout (std140, binding = 0) buffer Materials
 {
     materialData items[];
-} materialsLibrary;
+} materials;
 
 in vec3 fragPosition;
 in vec2 fragTexCoord;
@@ -26,7 +26,7 @@ out vec4 fragColor;
 
 void main(void)
 {
-    materialData mat = materialsLibrary.items[fragDrawId];
+    materialData mat = materials.items[fragDrawId];
     vec4 diffuseTextureColor = texture2D(mat.diffuseTexture, fragTexCoord);
     fragColor = mat.diffuse;
 

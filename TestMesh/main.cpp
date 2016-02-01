@@ -25,22 +25,13 @@
 
 typedef struct
 {
-    uint count;
-    uint instanceCount;
-    uint firstIndex;
-    uint baseVertex;
-    uint baseInstance;
+    GLuint count;
+    GLuint instanceCount;
+    GLuint firstIndex;
+    GLuint baseVertex;
+    GLuint baseInstance;
 }
 mdiCmd;
-
-typedef struct
-{
-    uint drawMaterial0;
-    uint drawMaterial1;
-    uint drawMaterial2;
-    uint drawMaterial3;
-}
-drawMaterialData;
 
 typedef struct
 {
@@ -69,7 +60,6 @@ std::vector<geometry*> _geometries;
 
 std::vector<material*> _materialsLibrary;
 std::vector<materialData> _materialsBuffer;
-std::vector<drawMaterialData> _drawMaterials;
 std::vector<texture*> _diffuseTextures;
 std::vector<texture*> _normalTextures;
 
@@ -391,8 +381,6 @@ void createBuffers()
     }
 
     _indicesBuffer = (uint*)newPersistentBuffer(GL_ELEMENT_ARRAY_BUFFER, _indicesBufferId, _indicesBufferSize * TRIPPLE_BUFFER);
-
-    //_mdiCmdBuffer = new mdiCmd[_objectCount];
 
     _mdiCmdBuffer = (mdiCmd*)newPersistentBuffer(GL_DRAW_INDIRECT_BUFFER, _mdiCmdBufferId, _mdiCmdBufferSize);
 
