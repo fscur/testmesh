@@ -347,63 +347,29 @@ void* newPersistentBuffer(GLenum bufferType, GLuint& bufferId, uint bufferSize)
     return glMapBufferRange(bufferType, 0, bufferSize, persistentMapFlags);
 }
 
-void* newNamedBufferData(GLenum bufferType, GLuint& bufferId, uint bufferSize)
+void newNamedBufferData(GLenum bufferType, GLuint& bufferId, uint bufferSize, const void* data)
 {
-
+    glCreateBuffers(1, &bufferId);
+    glBindBuffer(bufferType, bufferId);
+    glNamedBufferData(bufferId, bufferSize, data, GL_STATIC_DRAW);
 }
 
-void createBuffers()
+void fillNonPersistentBuffers()
 {
-    _positionsBufferSize = _vertices.size() * 3 * sizeof(float) * _objectCount;
-    _texCoordsBufferSize = _vertices.size() * 2 * sizeof(float) * _objectCount;
-    _drawIndexBufferSize = _drawCount * sizeof(GLuint);
-    _indicesBufferSize = _indices.size() * sizeof(uint) * _objectCount;
-    _modelMatricesBufferSize = sizeof(glm::mat4) * _drawCount;
-    _mdiCmdBufferSize = _objectCount * sizeof(mdiCmd);
+    auto buffersSize = _objectCount * TRIPPLE_BUFFER;
+    auto drawIndexBufferSize = _drawCount * TRIPPLE_BUFFER;
+    auto indicesCount = _indices.size();
 
-    glCreateVertexArrays(1, &_vaoId);
-    glBindVertexArray(_vaoId);
+    _positionsBuffer = new float[buffersSize * _vertices.size()];
+    _texCoordsBuffer = new float[buffersSize * _vertices.size()];
+    _indicesBuffer = new uint[buffersSize * indicesCount];
+    _drawIndexBuffer = new uint[drawIndexBufferSize];
 
-    _positionsBuffer = (float*) newNamedBufferData(GL_ARRAY_BUFFER, _positionsBufferId, _positionsBufferSize * TRIPPLE_BUFFER);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-    _texCoordsBuffer = (float*) newNamedBufferData(GL_ARRAY_BUFFER, _texCoordsBufferId, _texCoordsBufferSize * TRIPPLE_BUFFER);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
-
-    _drawIndexBuffer = (uint*) newNamedBufferData(GL_ARRAY_BUFFER, _drawIndexBufferId, _drawIndexBufferSize * TRIPPLE_BUFFER);
-    glEnableVertexAttribArray(2);
-    glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, 0, NULL);
-    glVertexAttribDivisor(2, 1);
-
-    _indicesBuffer = (uint*) newNamedBufferData(GL_ELEMENT_ARRAY_BUFFER, _indicesBufferId, _indicesBufferSize * TRIPPLE_BUFFER);
-
-    glCreateBuffers(1, &_materialsBufferId);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, _materialsBufferId);
-    auto size = sizeof(materialData) * _materialsCount;
-    glNamedBufferData(_materialsBufferId, sizeof(materialData) * _materialsCount, &_materialsBuffer[0], GL_STATIC_DRAW);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _materialsBufferId);
-
-    //persistent buffers
-    _modelMatricesBuffer = (glm::mat4*) newPersistentBuffer(GL_ARRAY_BUFFER, _modelMatricesBufferId, _modelMatricesBufferSize * TRIPPLE_BUFFER);
-    for(unsigned int i = 0; i < 4; i++)
-    {
-        glEnableVertexAttribArray(3 + i);
-        glVertexAttribPointer(3 + i, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (const GLvoid*) (sizeof(GLfloat) * i * 4));
-        glVertexAttribDivisor(3 + i, 1);
-    }
-
-    _mdiCmdBuffer = (mdiCmd*) newPersistentBuffer(GL_DRAW_INDIRECT_BUFFER, _mdiCmdBufferId, _mdiCmdBufferSize);
-}
-
-void fillBuffers()
-{
     int vIndex = -1;
     int tIndex = -1;
     int nIndex = -1;
 
-    for(uint i = 0; i < _objectCount * TRIPPLE_BUFFER; i++)
+    for(uint i = 0; i < buffersSize; i++)
     {
         for(auto vertex : _vertices)
         {
@@ -423,11 +389,10 @@ void fillBuffers()
         }
     }
 
-    for(uint i = 0; i < _drawCount * TRIPPLE_BUFFER; i++)
+    for(uint i = 0; i < drawIndexBufferSize; i++)
         _drawIndexBuffer[i] = rand() % _materialsCount;
 
-    auto indicesCount = _indices.size();
-    for(uint i = 0; i < _objectCount * TRIPPLE_BUFFER; i++)
+    for(uint i = 0; i < buffersSize; i++)
     {
         for(uint j = 0; j < indicesCount; j++)
         {
@@ -435,7 +400,56 @@ void fillBuffers()
             _indicesBuffer[index] = _indices[j];
         }
     }
+}
 
+void createNonPersistentBuffers()
+{
+    glCreateVertexArrays(1, &_vaoId);
+    glBindVertexArray(_vaoId);
+
+    _positionsBufferSize = _vertices.size() * 3 * sizeof(float) * _objectCount;
+    _texCoordsBufferSize = _vertices.size() * 2 * sizeof(float) * _objectCount;
+    _drawIndexBufferSize = _drawCount * sizeof(GLuint);
+    _indicesBufferSize = _indices.size() * sizeof(uint) * _objectCount;
+    auto materialBufferSize = sizeof(materialData) * _materialsCount;
+
+    newNamedBufferData(GL_ARRAY_BUFFER, _positionsBufferId, _positionsBufferSize, _positionsBuffer);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    newNamedBufferData(GL_ARRAY_BUFFER, _texCoordsBufferId, _texCoordsBufferSize, _texCoordsBuffer);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+    newNamedBufferData(GL_ARRAY_BUFFER, _drawIndexBufferId, _drawIndexBufferSize, _drawIndexBuffer);
+    glEnableVertexAttribArray(2);
+    glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, 0, NULL);
+    glVertexAttribDivisor(2, 1);
+
+    newNamedBufferData(GL_ELEMENT_ARRAY_BUFFER, _indicesBufferId, _indicesBufferSize, _indicesBuffer);
+
+    newNamedBufferData(GL_SHADER_STORAGE_BUFFER, _materialsBufferId, materialBufferSize, &_materialsBuffer[0]);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _materialsBufferId);
+}
+
+void createPersistentBuffers()
+{
+    _modelMatricesBufferSize = sizeof(glm::mat4) * _drawCount;
+    _mdiCmdBufferSize = _objectCount * sizeof(mdiCmd);
+
+    _modelMatricesBuffer = (glm::mat4*) newPersistentBuffer(GL_ARRAY_BUFFER, _modelMatricesBufferId, _modelMatricesBufferSize * TRIPPLE_BUFFER);
+    for(unsigned int i = 0; i < 4; i++)
+    {
+        glEnableVertexAttribArray(3 + i);
+        glVertexAttribPointer(3 + i, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (const GLvoid*) (sizeof(GLfloat) * i * 4));
+        glVertexAttribDivisor(3 + i, 1);
+    }
+
+    _mdiCmdBuffer = (mdiCmd*) newPersistentBuffer(GL_DRAW_INDIRECT_BUFFER, _mdiCmdBufferId, _mdiCmdBufferSize);
+}
+
+void fillPersistentBuffers()
+{
     for(auto v = 0; v < _drawCount * TRIPPLE_BUFFER; v++)
     {
         auto x = randf(-0.5f, 0.5f) * 10.0f;
@@ -502,8 +516,11 @@ bool init()
     createMaterials();
     createCubes();
 
-    createBuffers();
-    fillBuffers();
+    fillNonPersistentBuffers();
+    createNonPersistentBuffers();
+
+    createPersistentBuffers();
+    fillPersistentBuffers();
 
     for(size_t i = 0; i < TRIPPLE_BUFFER; i++)
     {
