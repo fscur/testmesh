@@ -29,7 +29,7 @@ struct drawMaterialData
 
 layout (std140, binding = 1) uniform DrawMaterialsBlock
 {
-    drawMaterialData items[1000];
+    drawMaterialData items[9];
 } drawMaterials;
 
 in vec3 fragPosition;
@@ -41,7 +41,11 @@ void main(void)
 {
     drawMaterialData drawMatData = drawMaterials.items[fragDrawId];
     materialData mat = materialsLibrary.items[drawMatData.drawMaterial1];
-    //vec4 diffuseTextureColor = texture(mat.diffuseTexture, fragTexCoord);
+    vec4 diffuseTextureColor = texture2D(mat.diffuseTexture, fragTexCoord);
     fragColor = mat.diffuse;
-    //fragColor = vec4(1.0);
+
+    //float d = float(fragDrawId)/8.0;
+    //float e = float(drawMatData.drawMaterial1)/3.0;
+    //float i = float(fragInstanceId)/2.0;
+    //fragColor = vec4(i, d, e, 1.0);
 }

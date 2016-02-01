@@ -74,10 +74,10 @@ std::vector<texture*> _diffuseTextures;
 std::vector<texture*> _normalTextures;
 
 uint _texturesCount = 2;
-uint _materialsCount = 10;
+uint _materialsCount = 100;
 uint _objectCount = 100;
 uint _instanceCount = 1000;
-uint _drawCount = _objectCount + _instanceCount;
+uint _drawCount = _objectCount * _instanceCount;
 
 std::vector<vertex> _vertices;
 std::vector<uint> _indices;
@@ -130,7 +130,7 @@ float _rotationSpeed = 0.01f;
 
 float t = 0.00f;
 float i = 0.00f;
-float height = 0.1f;
+float height = 0.0f;
 bool isDecreasingHeight = false;
 uint _lastDrawRange = 0;
 uint _drawRange = 0;
@@ -370,7 +370,7 @@ void initShader()
 void initCamera()
 {
     _camera = new camera();
-    _camera->setPosition(glm::vec3(0.0f, 3.0f, 5.0f));
+    _camera->setPosition(glm::vec3(0.0f, 3.0f, 20.0f));
     _camera->setTarget(glm::vec3(0.0f));
     _projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), 1024.0f / 768.0f, 0.1f, 100.0f);
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
@@ -480,13 +480,17 @@ void fillBuffers()
             0.0f, 0.0f, 1.0f, 0.0f,
             x, y, z, 1.0f);
 
-        _modelMatricesBuffer[v] = mat;
+        /*auto x = 0.0f;
+        auto y = 0.0f;
+        auto z = v * 2.0f;
 
-        //auto mat = glm::mat4(
-        //    1.0f, 0.0f, 0.0f, 0.0f,
-        //    0.0f, 1.0f, 0.0f, 0.0f,
-        //    0.0f, 0.0f, 1.0f, 0.0f,
-        //    0.0f, 0.0f, 0.0f, 1.0f);
+        auto mat = glm::mat4(
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            z, 0.0f, 0.0f, 1.0f);*/
+
+        _modelMatricesBuffer[v] = mat;
     }
 
     auto indexCount = _indices.size();
@@ -665,21 +669,21 @@ void updateModelMatricesBuffer()
     //auto size = _modelMatricesBuffer.size();
     for (auto i = _drawRange * _drawCount; i < _drawCount; i++)
     {
-        int shouldChange = glm::round(randf(0, 1));
-        if (shouldChange)
+        //int shouldChange = glm::round(randf(0, 1));
+        //if (shouldChange)
         {
             _modelMatricesBuffer[i][3][1] += height;
         }
     }
 
     if (isDecreasingHeight)
-        height -= 0.01f;
+        height -= 0.0001f;
     else
-        height += 0.01f;
+        height += 0.0001f;
 
-    if (height >= 0.5f)
+    if (height >= 0.01f)
         isDecreasingHeight = true;
-    else if (height <= -0.5f)
+    else if (height <= -0.01f)
         isDecreasingHeight = false;
 }
 
@@ -693,8 +697,8 @@ void update()
 
     t += i;
 
-    auto pos = glm::vec3(x, 0.2f, z) * 10.0f;
-    _camera->setPosition(pos);
+    //auto pos = glm::vec3(x, 0.2f, z) * 70.0f;
+    //_camera->setPosition(pos);
     _camera->update();
 
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
