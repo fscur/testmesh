@@ -19,19 +19,6 @@ layout (std140, binding = 0) uniform MaterialsLibraryBlock
     materialData items[100];
 } materialsLibrary;
 
-struct drawMaterialData
-{
-    uint drawMaterial0;
-    uint drawMaterial1;
-    uint drawMaterial2;
-    uint drawMaterial3;
-};
-
-layout (std140, binding = 1) uniform DrawMaterialsBlock
-{
-    drawMaterialData items[9];
-} drawMaterials;
-
 in vec3 fragPosition;
 in vec2 fragTexCoord;
 flat in uint fragDrawId;
@@ -39,8 +26,7 @@ out vec4 fragColor;
 
 void main(void)
 {
-    drawMaterialData drawMatData = drawMaterials.items[fragDrawId];
-    materialData mat = materialsLibrary.items[drawMatData.drawMaterial1];
+    materialData mat = materialsLibrary.items[fragDrawId];
     vec4 diffuseTextureColor = texture2D(mat.diffuseTexture, fragTexCoord);
     fragColor = mat.diffuse;
 

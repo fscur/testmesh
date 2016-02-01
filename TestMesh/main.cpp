@@ -321,27 +321,6 @@ void createMaterials()
     glUniformBlockBinding(id, materialsLibraryBlockIndex, 0);
     glBindBufferBase(GL_UNIFORM_BUFFER, 0, materialsLibraryBufferId);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-    for (auto i = 0; i < _drawCount; i++)
-    {
-        auto matIndex = rand() % _materialsCount;
-        auto data = drawMaterialData();
-        data.drawMaterial0 = 0;
-        data.drawMaterial1 = matIndex;
-        data.drawMaterial2 = i;
-        data.drawMaterial3 = 3;
-
-        _drawMaterials.push_back(data);
-    }
-
-    uint drawMaterialsBufferId = 0;
-    glCreateBuffers(1, &drawMaterialsBufferId);
-    glBindBuffer(GL_UNIFORM_BUFFER, drawMaterialsBufferId);
-    glNamedBufferData(drawMaterialsBufferId, sizeof(drawMaterialData) * _drawCount, &_drawMaterials[0], GL_STATIC_DRAW);
-    uint drawMaterialsBlockIndex = glGetUniformBlockIndex(id, "DrawMaterialsBlock");
-    glUniformBlockBinding(id, drawMaterialsBlockIndex, 1);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 1, drawMaterialsBufferId);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
 void createTextures(uint n)
@@ -454,9 +433,7 @@ void fillBuffers()
     }
 
     for (uint i = 0; i < _drawCount * TRIPPLE_BUFFER; i++)
-    {
-        _drawIndexBuffer[i] = i;
-    }
+        _drawIndexBuffer[i] = rand() % _materialsCount;
 
     auto indicesCount = _indices.size();
     for (uint i = 0; i < _objectCount * TRIPPLE_BUFFER; i++)
