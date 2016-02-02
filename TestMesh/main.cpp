@@ -80,7 +80,7 @@ uint _indicesBufferId = 0;
 uint _mdiCmdBufferId = 0;
 uint _materialsBufferId = 0;
 
-uint _interleavedPositionsTexCoordBufferSize = 0;
+uint _interleavedVBOSize = 0;
 uint _texCoordsBufferSize = 0;
 uint _drawIndexBufferSize = 0;
 uint _indicesBufferSize = 0;
@@ -355,17 +355,20 @@ void newNamedBufferData(GLenum bufferType, GLuint& bufferId, uint bufferSize, co
 
 void fillNonPersistentBuffers()
 {
-    auto buffersSize = _objectCount * TRIPPLE_BUFFER;
-    auto drawIndexBufferSize = _drawCount * TRIPPLE_BUFFER;
+    auto tripleBufferObjectCount = _objectCount * TRIPPLE_BUFFER;
     auto indicesCount = _indices.size();
 
-    _interleavedPositionTexCoordBuffer = new float[buffersSize * _vertices.size() * 5];
-    _indicesBuffer = new uint[buffersSize * indicesCount];
-    _drawIndexBuffer = new uint[drawIndexBufferSize];
+    _interleavedVBOSize = _vertices.size() * 5 * tripleBufferObjectCount;
+    _drawIndexBufferSize = _drawCount * TRIPPLE_BUFFER;
+    _indicesBufferSize = indicesCount * tripleBufferObjectCount;
+
+    _interleavedPositionTexCoordBuffer = new float[_interleavedVBOSize];
+    _indicesBuffer = new uint[_indicesBufferSize];
+    _drawIndexBuffer = new uint[_drawIndexBufferSize];
 
     int index = -1;
 
-    for(uint i = 0; i < buffersSize; i++)
+    for(uint i = 0; i < tripleBufferObjectCount; i++)
     {
         for(auto vertex : _vertices)
         {
@@ -380,10 +383,10 @@ void fillNonPersistentBuffers()
         }
     }
 
-    for(uint i = 0; i < drawIndexBufferSize; i++)
+    for(uint i = 0; i < _drawIndexBufferSize; i++)
         _drawIndexBuffer[i] = rand() % _materialsCount;
 
-    for(uint i = 0; i < buffersSize; i++)
+    for(uint i = 0; i < tripleBufferObjectCount; i++)
     {
         for(uint j = 0; j < indicesCount; j++)
         {
@@ -398,14 +401,10 @@ void createNonPersistentBuffers()
     glCreateVertexArrays(1, &_vaoId);
     glBindVertexArray(_vaoId);
 
-    _interleavedPositionsTexCoordBufferSize = _vertices.size() * 5 * sizeof(float) * _objectCount;
-    _texCoordsBufferSize = _vertices.size() * 2 * sizeof(float) * _objectCount;
-    _drawIndexBufferSize = _drawCount * sizeof(GLuint);
-    _indicesBufferSize = _indices.size() * sizeof(uint) * _objectCount;
     auto materialBufferSize = sizeof(materialData) * _materialsCount;
 
     auto floatSize = sizeof(float);
-    newNamedBufferData(GL_ARRAY_BUFFER, _interleavedPositionsTexCoordBufferId, _interleavedPositionsTexCoordBufferSize, _interleavedPositionTexCoordBuffer);
+    newNamedBufferData(GL_ARRAY_BUFFER, _interleavedPositionsTexCoordBufferId, _interleavedVBOSize * sizeof(float), _interleavedPositionTexCoordBuffer);
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, floatSize * 5, 0);
@@ -413,12 +412,12 @@ void createNonPersistentBuffers()
     //floatSize * 5: is the number in bytes for the next ocurrence in the buffer of the beggining of that particular attribute
     //(void*)(floatSize * 3): is the initial offset for the beggining of that particular attribute. Before the texCoords there are 3 floats (x,y,z) in the buffer
 
-    newNamedBufferData(GL_ARRAY_BUFFER, _drawIndexBufferId, _drawIndexBufferSize, _drawIndexBuffer);
+    newNamedBufferData(GL_ARRAY_BUFFER, _drawIndexBufferId, _drawIndexBufferSize * sizeof(uint), _drawIndexBuffer);
     glEnableVertexAttribArray(2);
     glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, 0, 0);
     glVertexAttribDivisor(2, 1);
 
-    newNamedBufferData(GL_ELEMENT_ARRAY_BUFFER, _indicesBufferId, _indicesBufferSize, _indicesBuffer);
+    newNamedBufferData(GL_ELEMENT_ARRAY_BUFFER, _indicesBufferId, _indicesBufferSize * sizeof(uint), _indicesBuffer);
 
     newNamedBufferData(GL_SHADER_STORAGE_BUFFER, _materialsBufferId, materialBufferSize, &_materialsBuffer[0]);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _materialsBufferId);
@@ -608,7 +607,7 @@ void input()
 void updateMdiCmdBuffer()
 {
     for(uint i = 0; i < _objectCount; i++)
-        _mdiCmdBuffer[i].firstIndex = _drawRange * _mdiCmdBuffer[i].count;
+        _mdiCmdBuffer[i].firstIndex = _drawRange * 36;
 }
 
 void updateModelMatricesBuffer()
@@ -620,11 +619,6 @@ void updateModelMatricesBuffer()
     {
         _modelMatricesBuffer[i][3][1] += height;
     }
-
-    //for(auto i = bufferRange; i < _drawCount; i++)
-    //{
-    //    _modelMatricesBuffer[i][3][1] += height;
-    //}
 
     if(isDecreasingHeight)
     {
