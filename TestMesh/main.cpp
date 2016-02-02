@@ -650,7 +650,7 @@ void updateMdiCmdBuffer()
 
 void updateModelMatricesBuffer()
 {
-    for (auto i = _drawRange * _drawCount; i < _drawCount; i++)
+    for (auto i = _drawRange * _drawCount; i < _drawCount * (_drawRange  + 1); i++)
             _drawDataBuffer[i].m[3][1] += height;
 
     if (isDecreasingHeight)
