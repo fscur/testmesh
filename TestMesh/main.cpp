@@ -35,6 +35,16 @@ mdiCmd;
 
 typedef struct
 {
+    glm::mat4 m;
+    GLuint materialId;
+    GLuint pad0;
+    GLuint pad1;
+    GLuint pad2;
+}
+drawData;
+
+typedef struct
+{
     float diffuseR;
     float diffuseG;
     float diffuseB;
@@ -80,18 +90,21 @@ uint _modelMatricesBufferId = 0;
 uint _indicesBufferId = 0;
 uint _mdiCmdBufferId = 0;
 uint _materialsBufferId = 0;
+uint _drawDataBufferId = 0;
 
 uint _interleavedBufferSize = 0;
 uint _drawIndexBufferSize = 0;
 uint _indicesBufferSize = 0;
 uint _modelMatricesBufferSize = 0;
 uint _mdiCmdBufferSize = 0;
+uint _drawDataBufferSize = 0;
 
 float* _interleavedBuffer;
 uint* _drawIndexBuffer;
 glm::mat4* _modelMatricesBuffer;
 uint* _indicesBuffer;
 mdiCmd* _mdiCmdBuffer;
+drawData* _drawDataBuffer;
 
 shader* _shader;
 texture* _texture;
@@ -297,9 +310,6 @@ void createMaterials()
 
         _materialsBuffer.push_back(data);
     }
-
-    auto id = _shader->getId();
-
 }
 
 void createTextures(uint n)
@@ -435,6 +445,9 @@ void createPersistentBuffers()
     }
 
     _mdiCmdBuffer = (mdiCmd*) newPersistentBuffer(GL_DRAW_INDIRECT_BUFFER, _mdiCmdBufferId, _mdiCmdBufferSize);
+
+    _drawDataBuffer = (drawData*)newPersistentBuffer(GL_SHADER_STORAGE_BUFFER, _drawDataBufferId, _drawDataBufferSize * TRIPLE_BUFFER);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _drawDataBufferId);
 }
 
 void fillPersistentBuffers()
@@ -474,6 +487,32 @@ void fillPersistentBuffers()
         _mdiCmdBuffer[i].firstIndex = 0;
         _mdiCmdBuffer[i].baseVertex = i * vertexCount;
         _mdiCmdBuffer[i].baseInstance = i * _instanceCount;
+    }
+
+    for (auto i = 0; i < _drawCount; i++)
+    {
+        auto x = randf(-0.5f, 0.5f) * 10.0f;
+        auto y = randf(-0.5f, 0.5f) * 10.0f;
+        auto z = randf(-0.5f, 0.5f) * 10.0f;
+
+        auto mat = glm::mat4(
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            x, y, z, 1.0f);
+
+        auto matId = rand() % _materialsCount;
+
+        for (auto j = 0; j < TRIPLE_BUFFER; j++)
+        {
+            auto index = j * _drawCount + i;
+
+            _drawDataBuffer[index].m = mat;
+            _drawDataBuffer[index].materialId = matId;
+            _drawDataBuffer[index].pad0 = 0;
+            _drawDataBuffer[index].pad1 = 0;
+            _drawDataBuffer[index].pad2 = 0;
+        }
     }
 }
 
@@ -605,14 +644,14 @@ void input()
 void updateMdiCmdBuffer()
 {
     for(uint i = 0; i < _objectCount; i++)
-        _mdiCmdBuffer[i].firstIndex = _drawRange * 36;
+        _mdiCmdBuffer[i].firstIndex = _drawRange * _mdiCmdBuffer[i].count;
 }
 
 void updateModelMatricesBuffer()
 {
     for(auto i = _drawRange * _drawCount; i < _drawCount; i++)
     {
-        _modelMatricesBuffer[i][3][1] += height;
+        _modelMatricesBuffer[i].m[3][1] += height;
     }
 
     if(isDecreasingHeight)
@@ -658,7 +697,8 @@ void render()
 
     _shader->getUniform(0).set(_projectionMatrix * _viewMatrix);
 
-    glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, NULL, _objectCount, 0);
+    glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, _objectCount, 0);
+
     _lastDrawRange = _drawRange;
     _drawRange = ++_drawRange % TRIPLE_BUFFER;
 }
