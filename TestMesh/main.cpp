@@ -86,7 +86,6 @@ uint _vaoId = 0;
 uint _interleavedPositionsTexCoordBufferId = 0;
 uint _texCoordsBufferId = 0;
 uint _drawIndexBufferId = 0;
-uint _modelMatricesBufferId = 0;
 uint _indicesBufferId = 0;
 uint _mdiCmdBufferId = 0;
 uint _materialsBufferId = 0;
@@ -95,13 +94,11 @@ uint _drawDataBufferId = 0;
 uint _interleavedBufferSize = 0;
 uint _drawIndexBufferSize = 0;
 uint _indicesBufferSize = 0;
-uint _modelMatricesBufferSize = 0;
 uint _mdiCmdBufferSize = 0;
 uint _drawDataBufferSize = 0;
 
 float* _interleavedBuffer;
 uint* _drawIndexBuffer;
-glm::mat4* _modelMatricesBuffer;
 uint* _indicesBuffer;
 mdiCmd* _mdiCmdBuffer;
 drawData* _drawDataBuffer;
@@ -428,21 +425,13 @@ void createNonPersistentBuffers()
     newNamedBufferData(GL_ELEMENT_ARRAY_BUFFER, _indicesBufferId, _indicesBufferSize, _indicesBuffer);
 
     newNamedBufferData(GL_SHADER_STORAGE_BUFFER, _materialsBufferId, materialBufferSize, &_materialsBuffer[0]);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _materialsBufferId);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _materialsBufferId);
 }
 
 void createPersistentBuffers()
 {
-    _modelMatricesBufferSize = sizeof(glm::mat4) * _drawCount;
     _mdiCmdBufferSize = _objectCount * sizeof(mdiCmd);
-
-    _modelMatricesBuffer = (glm::mat4*) newPersistentBuffer(GL_ARRAY_BUFFER, _modelMatricesBufferId, _modelMatricesBufferSize * TRIPLE_BUFFER);
-    for(unsigned int i = 0; i < 4; i++)
-    {
-        glEnableVertexAttribArray(3 + i);
-        glVertexAttribPointer(3 + i, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (const GLvoid*) (sizeof(GLfloat) * i * 4));
-        glVertexAttribDivisor(3 + i, 1);
-    }
+    _drawDataBufferSize = _drawCount * sizeof(drawData);
 
     _mdiCmdBuffer = (mdiCmd*) newPersistentBuffer(GL_DRAW_INDIRECT_BUFFER, _mdiCmdBufferId, _mdiCmdBufferSize);
 
@@ -452,31 +441,6 @@ void createPersistentBuffers()
 
 void fillPersistentBuffers()
 {
-    for(auto v = 0; v < _drawCount * TRIPLE_BUFFER; v++)
-    {
-        auto x = randf(-0.5f, 0.5f) * 10.0f;
-        auto y = randf(-0.5f, 0.5f) * 10.0f;
-        auto z = randf(-0.5f, 0.5f) * 10.0f;
-
-        auto mat = glm::mat4(
-            1.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f,
-            x, y, z, 1.0f);
-
-        /*auto x = 0.0f;
-        auto y = 0.0f;
-        auto z = v * 2.0f;
-
-        auto mat = glm::mat4(
-            1.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f,
-            z, 0.0f, 0.0f, 1.0f);*/
-
-        _modelMatricesBuffer[v] = mat;
-    }
-
     auto indexCount = _indices.size();
     auto vertexCount = _vertices.size();
 
@@ -551,9 +515,7 @@ bool init()
     fillPersistentBuffers();
 
     for(size_t i = 0; i < TRIPLE_BUFFER; i++)
-    {
         _drawFences.push_back(GLsync());
-    }
 
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -647,30 +609,17 @@ void updateMdiCmdBuffer()
         _mdiCmdBuffer[i].firstIndex = _drawRange * _mdiCmdBuffer[i].count;
 }
 
+float s = 1.0f;
+
 void updateModelMatricesBuffer()
 {
     for(auto i = _drawRange * _drawCount; i < _drawCount; i++)
-    {
-        _modelMatricesBuffer[i].m[3][1] += height;
-    }
+        _drawDataBuffer[i].m[3][1] += height;
 
-    if(isDecreasingHeight)
-    {
-        height -= 0.001f;
-    }
-    else
-    {
-        height += 0.001f;
-    }
+    if (glm::abs(height) > 0.5f)
+        s *= -1.0f;
 
-    if(height >= 0.05f)
-    {
-        isDecreasingHeight = true;
-    }
-    else if(height <= -0.05f)
-    {
-        isDecreasingHeight = false;
-    }
+    height += 0.01f * s;
 }
 
 void update()
@@ -745,17 +694,15 @@ void release()
 
     glDeleteBuffers(1, &_interleavedPositionsTexCoordBufferId);
     glDeleteBuffers(1, &_texCoordsBufferId);
-    glDeleteBuffers(1, &_modelMatricesBufferId);
+    glDeleteBuffers(1, &_drawDataBufferId);
     glDeleteBuffers(1, &_drawIndexBufferId);
     glDeleteBuffers(1, &_indicesBufferId);
     glDeleteBuffers(1, &_mdiCmdBufferId);
     glDeleteBuffers(1, &_materialsBufferId);
 
-    delete[] _interleavedPositionTexCoordBuffer;
-    delete[] _texCoordsBuffer;
-    delete[] _normalsBuffer;
+    delete[] _interleavedBuffer;
     delete[] _drawIndexBuffer;
-    delete[] _modelMatricesBuffer;
+    delete[] _drawDataBuffer;
     delete[] _indicesBuffer;
     delete[] _mdiCmdBuffer;
 
