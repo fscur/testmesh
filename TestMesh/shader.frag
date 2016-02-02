@@ -4,13 +4,9 @@
 struct materialData
 {
     vec4 diffuse;
-    //16 bytes
     vec4 specular;
-    //16 bytes
     sampler2D diffuseTexture;
-    //8 bytes
     sampler2D normalTexture;
-    //8 bytes
 };
 
 layout (std140, binding = 1) buffer Materials

@@ -64,7 +64,7 @@ SDL_Window* _window;
 SDL_GLContext _glContext;
 FT_Library freeLib;
 
-const uint TRIPPLE_BUFFER = 3;
+const uint TRIPLE_BUFFER = 3;
 
 std::vector<geometry*> _geometries;
 
@@ -201,13 +201,11 @@ bool createGLWindow()
     return true;
 }
 
-bool initGL()
+void initGL()
 {
     glClearColor(0.0f, 0.0f, 0.0f, 0.5f);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
-
-    return glGetError() != GL_FALSE;
 }
 
 void createCubes()
@@ -316,9 +314,9 @@ void createMaterials()
     }
 }
 
-void createTextures(uint n)
+void createTextures()
 {
-    for (auto i = 0; i < n; i++)
+    for (auto i = 0; i < _texturesCount; i++)
     {
         _diffuseTextures.push_back(texture::fromFile("diffuse.bmp"));
         _normalTextures.push_back(texture::fromFile("normal.bmp"));
@@ -408,32 +406,32 @@ void createBuffers()
     glCreateVertexArrays(1, &_vaoId);
     glBindVertexArray(_vaoId);
 
-    _positionsBuffer = (float*)newPersistentBuffer(GL_ARRAY_BUFFER, _positionsBufferId, _positionsBufferSize * TRIPPLE_BUFFER);
+    _positionsBuffer = (float*)newPersistentBuffer(GL_ARRAY_BUFFER, _positionsBufferId, _positionsBufferSize * TRIPLE_BUFFER);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-    _texCoordsBuffer = (float*)newPersistentBuffer(GL_ARRAY_BUFFER, _texCoordsBufferId, _texCoordsBufferSize * TRIPPLE_BUFFER);
+    _texCoordsBuffer = (float*)newPersistentBuffer(GL_ARRAY_BUFFER, _texCoordsBufferId, _texCoordsBufferSize * TRIPLE_BUFFER);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
-    _drawIndexBuffer = (uint*)newPersistentBuffer(GL_ARRAY_BUFFER, _drawIndexBufferId, _drawIndexBufferSize * TRIPPLE_BUFFER);
+    _drawIndexBuffer = (uint*)newPersistentBuffer(GL_ARRAY_BUFFER, _drawIndexBufferId, _drawIndexBufferSize * TRIPLE_BUFFER);
     glEnableVertexAttribArray(2);
     glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, 0, NULL);
     glVertexAttribDivisor(2, 1);
 
-    _indicesBuffer = (uint*)newPersistentBuffer(GL_ELEMENT_ARRAY_BUFFER, _indicesBufferId, _indicesBufferSize * TRIPPLE_BUFFER);
+    _indicesBuffer = (uint*)newPersistentBuffer(GL_ELEMENT_ARRAY_BUFFER, _indicesBufferId, _indicesBufferSize * TRIPLE_BUFFER);
 
     _mdiCmdBuffer = (mdiCmd*)newPersistentBuffer(GL_DRAW_INDIRECT_BUFFER, _mdiCmdBufferId, _mdiCmdBufferSize);
 
-    //_drawDataBuffer = (drawData*)newPersistentBuffer(GL_SHADER_STORAGE_BUFFER, _drawDataBufferId, _drawDataBufferSize);
-
+    _drawDataBuffer = (drawData*)newPersistentBuffer(GL_SHADER_STORAGE_BUFFER, _drawDataBufferId, _drawDataBufferSize * TRIPLE_BUFFER);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _drawDataBufferId);
     /*auto persistentMapFlags = GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_MAP_COHERENT_BIT;
     */
 
-    glCreateBuffers(1, &_drawDataBufferId);
+    /*glCreateBuffers(1, &_drawDataBufferId);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _drawDataBufferId);
-    glBufferStorage(GL_SHADER_STORAGE_BUFFER, _drawDataBufferSize, nullptr, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT | GL_DYNAMIC_STORAGE_BIT);
-    _drawDataBuffer = (drawData*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, _drawDataBufferSize, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
+    glBufferStorage(GL_SHADER_STORAGE_BUFFER, _drawDataBufferSize * TRIPPLE_BUFFER, nullptr, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);
+    _drawDataBuffer = (drawData*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, _drawDataBufferSize * TRIPPLE_BUFFER, GL_MAP_WRITE_BIT | GL_MAP_PERSISTENT_BIT);*/
 
     /*_modelMatricesBuffer = (glm::mat4*) newPersistentBuffer(GL_ARRAY_BUFFER, _modelMatricesBufferId, _modelMatricesBufferSize * TRIPPLE_BUFFER);
     for (unsigned int i = 0; i < 4; i++)
@@ -450,7 +448,7 @@ void fillBuffers()
     int tIndex = -1;
     int nIndex = -1;
 
-    for (uint i = 0; i < _objectCount * TRIPPLE_BUFFER; i++)
+    for (uint i = 0; i < _objectCount * TRIPLE_BUFFER; i++)
     {
         for (auto vertex : _vertices)
         {
@@ -470,11 +468,11 @@ void fillBuffers()
         }
     }
 
-    for (uint i = 0; i < _drawCount * TRIPPLE_BUFFER; i++)
+    for (uint i = 0; i < _drawCount * TRIPLE_BUFFER; i++)
         _drawIndexBuffer[i] = i;
 
     auto indicesCount = _indices.size();
-    for (uint i = 0; i < _objectCount * TRIPPLE_BUFFER; i++)
+    for (uint i = 0; i < _objectCount * TRIPLE_BUFFER; i++)
     {
         for (uint j = 0; j < indicesCount; j++)
         {
@@ -495,6 +493,7 @@ void fillBuffers()
         _mdiCmdBuffer[i].baseInstance = i * _instanceCount;
     }
 
+    
     for (auto i = 0; i < _drawCount; i++)
     {
         auto x = randf(-0.5f, 0.5f) * 10.0f;
@@ -507,11 +506,18 @@ void fillBuffers()
             0.0f, 0.0f, 1.0f, 0.0f,
             x, y, z, 1.0f);
 
-        _drawDataBuffer[i].m = mat;
-        _drawDataBuffer[i].materialId = rand() % _materialsCount;
-        _drawDataBuffer[i].pad0 = 0;
-        _drawDataBuffer[i].pad1 = 0;
-        _drawDataBuffer[i].pad2 = 0;
+        auto matId = rand() % _materialsCount;
+
+        for (auto j = 0; j < TRIPLE_BUFFER; j++)
+        {
+            auto index = j * _drawCount + i;
+
+            _drawDataBuffer[index].m = mat;
+            _drawDataBuffer[index].materialId = matId;
+            _drawDataBuffer[index].pad0 = 0;
+            _drawDataBuffer[index].pad1 = 0;
+            _drawDataBuffer[index].pad2 = 0;
+        }
     }
 }
 
@@ -533,13 +539,10 @@ bool init()
     if (!createGLWindow())
         return false;
 
-    if (!initGL())
-        return false;
-
     initShader();
     initCamera();
 
-    createTextures(_texturesCount);
+    createTextures();
     createMaterials();
     createCubes();
     
@@ -548,12 +551,12 @@ bool init()
     createBuffers();
     fillBuffers();
 
-    for (size_t i = 0; i < TRIPPLE_BUFFER; i++)
+    for (size_t i = 0; i < TRIPLE_BUFFER; i++)
     {
         _drawFences.push_back(GLsync());
     }
 
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    initGL();
 
     return true;
 }
@@ -639,54 +642,16 @@ void input()
     }
 }
 
-void printUniformBlocks()
-{
-    GLint numBlocks;
-    GLint nameLen;
-
-    std::vector<std::string> nameList;
-    auto id = _shader->getId();
-    glGetProgramiv(id, GL_ACTIVE_UNIFORM_BLOCKS, &numBlocks);
-    nameList.reserve(numBlocks);
-
-    std::cout << "found " << numBlocks << " block in shader" << std::endl;
-
-    for (int blockIx = 0; blockIx < numBlocks; blockIx++)
-    {
-        glGetActiveUniformBlockiv(id, blockIx, GL_UNIFORM_BLOCK_NAME_LENGTH, &nameLen);
-
-        std::vector<GLchar> name;
-        name.resize(nameLen);
-        glGetActiveUniformBlockName(id, blockIx, nameLen, NULL, &name[0]);
-
-        nameList.push_back(std::string());
-        nameList.back().assign(name.begin(), name.end() - 1); //Remove the null terminator.
-    }
-
-    for (unsigned int il = 0; il < nameList.size(); il++)
-    {
-        std::cout << "Block name: " << nameList[il] << std::endl;
-    }
-
-}
-
 void updateMdiCmdBuffer()
 {
     for (uint i = 0; i < _objectCount; i++)
-        _mdiCmdBuffer[i].firstIndex = _drawRange * _mdiCmdBuffer[i].count;
+       _mdiCmdBuffer[i].firstIndex = _drawRange * _mdiCmdBuffer[i].count;
 }
 
 void updateModelMatricesBuffer()
 {
-    //auto size = _modelMatricesBuffer.size();
-    for (auto i = 0; i < _drawCount; i++)
-    {
-        //int shouldChange = glm::round(randf(0, 1));
-        //if (shouldChange)
-        {
+    for (auto i = _drawRange * _drawCount; i < _drawCount; i++)
             _drawDataBuffer[i].m[3][1] += height;
-        }
-    }
 
     if (isDecreasingHeight)
         height -= 0.0001f;
@@ -725,9 +690,10 @@ void render()
 
     _shader->getUniform(0).set(_projectionMatrix * _viewMatrix);
 
-    glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, NULL, _objectCount, 0);
+    glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)0, _objectCount, 0);
+
     _lastDrawRange = _drawRange;
-    _drawRange = ++_drawRange % TRIPPLE_BUFFER;
+    _drawRange = ++_drawRange % TRIPLE_BUFFER;
 }
 
 void lock()
