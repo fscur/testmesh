@@ -21,7 +21,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <ctime>
-//#include <GL\GL.h>
 
 typedef struct
 {
@@ -65,8 +64,8 @@ std::vector<texture*> _normalTextures;
 
 uint _texturesCount = 2;
 uint _materialsCount = 100;
-uint _objectCount = 100;
-uint _instanceCount = 1000;
+uint _objectCount = 1;
+uint _instanceCount = 1;
 uint _drawCount = _objectCount * _instanceCount;
 
 std::vector<vertex> _vertices;
@@ -182,7 +181,7 @@ bool createGLWindow()
             return false;
     }
 
-    SDL_GL_SetSwapInterval(0);
+    //SDL_GL_SetSwapInterval(0);
 
     return true;
 }
@@ -331,7 +330,7 @@ void initShader()
 void initCamera()
 {
     _camera = new camera();
-    _camera->setPosition(glm::vec3(0.0f, 3.0f, 20.0f));
+    _camera->setPosition(glm::vec3(0.0f, 3.0f, 5.0f));
     _camera->setTarget(glm::vec3(0.0f));
     _projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), 1024.0f / 768.0f, 0.1f, 100.0f);
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
@@ -372,7 +371,7 @@ void fillNonPersistentBuffers()
         {
             auto position = vertex.GetPosition();
             auto texCoord = vertex.GetTexCoord();
-            
+
             _interleavedPositionTexCoordBuffer[++index] = position.x;
             _interleavedPositionTexCoordBuffer[++index] = position.y;
             _interleavedPositionTexCoordBuffer[++index] = position.z;
@@ -410,7 +409,7 @@ void createNonPersistentBuffers()
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, floatSize * 5, 0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, floatSize * 5, (void*)(floatSize * 3));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, floatSize * 5, (void*) (floatSize * 3));
     //floatSize * 5: is the number in bytes for the next ocurrence in the buffer of the beggining of that particular attribute
     //(void*)(floatSize * 3): is the initial offset for the beggining of that particular attribute. Before the texCoords there are 3 floats (x,y,z) in the buffer
 
@@ -614,10 +613,18 @@ void updateMdiCmdBuffer()
 
 void updateModelMatricesBuffer()
 {
-    for(auto i = _drawRange * _drawCount; i < _drawCount; i++)
+    int bufferRange = _drawRange * _drawCount;
+    int endOfBufferRange = bufferRange + _drawCount;
+
+    for(auto i = bufferRange; i < endOfBufferRange; i++)
     {
         _modelMatricesBuffer[i][3][1] += height;
     }
+
+    //for(auto i = bufferRange; i < _drawCount; i++)
+    //{
+    //    _modelMatricesBuffer[i][3][1] += height;
+    //}
 
     if(isDecreasingHeight)
     {
@@ -680,7 +687,6 @@ void loop()
         input();
 
         waitLock();
-
         update();
 
         stopwatch::MeasureInMilliseconds([&]
