@@ -21,6 +21,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <ctime>
+#include "bufferLockManager.h"
+
 
 typedef struct
 {
@@ -56,6 +58,7 @@ FT_Library freeLib;
 const uint TRIPPLE_BUFFER = 3;
 
 std::vector<geometry*> _geometries;
+std::vector<glm::mat4> _modelMatrices = std::vector<glm::mat4>();
 
 std::vector<material*> _materialsLibrary;
 std::vector<materialData> _materialsBuffer;
@@ -64,15 +67,15 @@ std::vector<texture*> _normalTextures;
 
 uint _texturesCount = 2;
 uint _materialsCount = 100;
-uint _objectCount = 1;
-uint _instanceCount = 1;
+uint _objectCount = 100;
+uint _instanceCount = 1000;
 uint _drawCount = _objectCount * _instanceCount;
 
 std::vector<vertex> _vertices;
 std::vector<uint> _indices;
 
 uint _vaoId = 0;
-uint _interleavedPositionsTexCoordBufferId = 0;
+uint _interleavedVBOId = 0;
 uint _texCoordsBufferId = 0;
 uint _drawIndexBufferId = 0;
 uint _modelMatricesBufferId = 0;
@@ -87,8 +90,7 @@ uint _indicesBufferSize = 0;
 uint _modelMatricesBufferSize = 0;
 uint _mdiCmdBufferSize = 0;
 
-float* _interleavedPositionTexCoordBuffer;
-float* _texCoordsBuffer;
+float* _interleavedVBO;
 float* _normalsBuffer;
 uint* _drawIndexBuffer;
 glm::mat4* _modelMatricesBuffer;
@@ -117,13 +119,10 @@ bool _rotating;
 glm::vec3 _cameraPos;
 float _rotationSpeed = 0.01f;
 
-float t = 0.00f;
-float i = 0.00f;
 float height = 0.0f;
 bool isDecreasingHeight = false;
-uint _lastDrawRange = 0;
 uint _drawRange = 0;
-std::vector<GLsync> _drawFences;
+bufferLockManager _bufferLockManager(true);
 
 float randf(float fMin, float fMax)
 {
@@ -252,6 +251,24 @@ void createCubes()
     addVertex(vertex(glm::vec3(+0.5f, +0.5f, -0.5f), glm::vec2(0.0, 0.0), glm::vec3(0.0, 1.0, 0.0)));
 }
 
+void createModelMatrices()
+{
+    for(auto v = 0; v < _drawCount; v++)
+    {
+        auto x = randf(-0.5f, 0.5f) * 10.0f;
+        auto y = randf(-0.5f, 0.5f) * 10.0f;
+        auto z = randf(-0.5f, 0.5f) * 10.0f;
+
+        auto mat = glm::mat4(
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            x, y, z, 1.0f);
+
+        _modelMatrices.push_back(mat);
+    }
+}
+
 material* createMaterial(texture* diffuseTexure, texture* normalTexture)
 {
     auto r = randf(0.0f, 1.0f);
@@ -330,7 +347,7 @@ void initShader()
 void initCamera()
 {
     _camera = new camera();
-    _camera->setPosition(glm::vec3(0.0f, 3.0f, 5.0f));
+    _camera->setPosition(glm::vec3(0.0f, 3.0f, 10.0f));
     _camera->setTarget(glm::vec3(0.0f));
     _projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), 1024.0f / 768.0f, 0.1f, 100.0f);
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
@@ -362,7 +379,7 @@ void fillNonPersistentBuffers()
     _drawIndexBufferSize = _drawCount * TRIPPLE_BUFFER;
     _indicesBufferSize = indicesCount * tripleBufferObjectCount;
 
-    _interleavedPositionTexCoordBuffer = new float[_interleavedVBOSize];
+    _interleavedVBO = new float[_interleavedVBOSize];
     _indicesBuffer = new uint[_indicesBufferSize];
     _drawIndexBuffer = new uint[_drawIndexBufferSize];
 
@@ -375,11 +392,11 @@ void fillNonPersistentBuffers()
             auto position = vertex.GetPosition();
             auto texCoord = vertex.GetTexCoord();
 
-            _interleavedPositionTexCoordBuffer[++index] = position.x;
-            _interleavedPositionTexCoordBuffer[++index] = position.y;
-            _interleavedPositionTexCoordBuffer[++index] = position.z;
-            _interleavedPositionTexCoordBuffer[++index] = texCoord.x;
-            _interleavedPositionTexCoordBuffer[++index] = texCoord.y;
+            _interleavedVBO[++index] = position.x;
+            _interleavedVBO[++index] = position.y;
+            _interleavedVBO[++index] = position.z;
+            _interleavedVBO[++index] = texCoord.x;
+            _interleavedVBO[++index] = texCoord.y;
         }
     }
 
@@ -404,7 +421,7 @@ void createNonPersistentBuffers()
     auto materialBufferSize = sizeof(materialData) * _materialsCount;
 
     auto floatSize = sizeof(float);
-    newNamedBufferData(GL_ARRAY_BUFFER, _interleavedPositionsTexCoordBufferId, _interleavedVBOSize * sizeof(float), _interleavedPositionTexCoordBuffer);
+    newNamedBufferData(GL_ARRAY_BUFFER, _interleavedVBOId, _interleavedVBOSize * sizeof(float), _interleavedVBO);
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, floatSize * 5, 0);
@@ -441,30 +458,7 @@ void createPersistentBuffers()
 
 void fillPersistentBuffers()
 {
-    for(auto v = 0; v < _drawCount * TRIPPLE_BUFFER; v++)
-    {
-        auto x = randf(-0.5f, 0.5f) * 10.0f;
-        auto y = randf(-0.5f, 0.5f) * 10.0f;
-        auto z = randf(-0.5f, 0.5f) * 10.0f;
-
-        auto mat = glm::mat4(
-            1.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f,
-            x, y, z, 1.0f);
-
-        /*auto x = 0.0f;
-        auto y = 0.0f;
-        auto z = v * 2.0f;
-
-        auto mat = glm::mat4(
-            1.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f,
-            z, 0.0f, 0.0f, 1.0f);*/
-
-        _modelMatricesBuffer[v] = mat;
-    }
+    memcpy(_modelMatricesBuffer, &*_modelMatrices.begin(), _modelMatrices.size() * sizeof(glm::mat4));;
 
     auto indexCount = _indices.size();
     auto vertexCount = _vertices.size();
@@ -506,17 +500,13 @@ bool init()
     createTextures(_texturesCount);
     createMaterials();
     createCubes();
+    createModelMatrices();
 
     fillNonPersistentBuffers();
     createNonPersistentBuffers();
 
     createPersistentBuffers();
     fillPersistentBuffers();
-
-    for(size_t i = 0; i < TRIPPLE_BUFFER; i++)
-    {
-        _drawFences.push_back(GLsync());
-    }
 
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -615,10 +605,16 @@ void updateModelMatricesBuffer()
     int bufferRange = _drawRange * _drawCount;
     int endOfBufferRange = bufferRange + _drawCount;
 
-    for(auto i = bufferRange; i < endOfBufferRange; i++)
-    {
-        _modelMatricesBuffer[i][3][1] += height;
-    }
+    stopwatch::MeasureInMilliseconds([&] {
+        for(auto &matrix : _modelMatrices)
+        {
+            matrix[3][1] += height;
+        }
+    }, "update matrices");
+
+    stopwatch::MeasureInMilliseconds([&] {
+        memcpy(_modelMatricesBuffer + bufferRange, &*_modelMatrices.begin(), _modelMatrices.size() * sizeof(glm::mat4));
+    }, "memcpy");
 
     if(isDecreasingHeight)
     {
@@ -659,19 +655,9 @@ void render()
     _shader->getUniform(0).set(_projectionMatrix * _viewMatrix);
 
     glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, NULL, _objectCount, 0);
-    _lastDrawRange = _drawRange;
+
+    _bufferLockManager.lockRange(_drawRange, 1);
     _drawRange = ++_drawRange % TRIPPLE_BUFFER;
-}
-
-void lock()
-{
-    _drawFences[_lastDrawRange] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-}
-
-void waitLock()
-{
-    glClientWaitSync(_drawFences[_drawRange], GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
-    glDeleteSync(_drawFences[_drawRange]);
 }
 
 void loop()
@@ -680,13 +666,12 @@ void loop()
     {
         input();
 
-        waitLock();
+        _bufferLockManager.waitForLockedRange(_drawRange, 1);
         update();
 
         stopwatch::MeasureInMilliseconds([&]
         {
             render();
-            lock();
             SDL_GL_SwapWindow(_window);
         }, "render");
     }
@@ -702,7 +687,7 @@ void release()
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(0);
 
-    glDeleteBuffers(1, &_interleavedPositionsTexCoordBufferId);
+    glDeleteBuffers(1, &_interleavedVBOId);
     glDeleteBuffers(1, &_texCoordsBufferId);
     glDeleteBuffers(1, &_modelMatricesBufferId);
     glDeleteBuffers(1, &_drawIndexBufferId);
@@ -710,8 +695,7 @@ void release()
     glDeleteBuffers(1, &_mdiCmdBufferId);
     glDeleteBuffers(1, &_materialsBufferId);
 
-    delete[] _interleavedPositionTexCoordBuffer;
-    delete[] _texCoordsBuffer;
+    delete[] _interleavedVBO;
     delete[] _normalsBuffer;
     delete[] _drawIndexBuffer;
     delete[] _modelMatricesBuffer;
