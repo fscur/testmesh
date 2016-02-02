@@ -54,7 +54,7 @@ SDL_Window* _window;
 SDL_GLContext _glContext;
 FT_Library freeLib;
 
-const uint TRIPPLE_BUFFER = 3;
+const uint TRIPLE_BUFFER = 3;
 
 std::vector<geometry*> _geometries;
 
@@ -81,16 +81,13 @@ uint _indicesBufferId = 0;
 uint _mdiCmdBufferId = 0;
 uint _materialsBufferId = 0;
 
-uint _interleavedPositionsTexCoordBufferSize = 0;
-uint _texCoordsBufferSize = 0;
+uint _interleavedBufferSize = 0;
 uint _drawIndexBufferSize = 0;
 uint _indicesBufferSize = 0;
 uint _modelMatricesBufferSize = 0;
 uint _mdiCmdBufferSize = 0;
 
-float* _interleavedPositionTexCoordBuffer;
-float* _texCoordsBuffer;
-float* _normalsBuffer;
+float* _interleavedBuffer;
 uint* _drawIndexBuffer;
 glm::mat4* _modelMatricesBuffer;
 uint* _indicesBuffer;
@@ -356,11 +353,11 @@ void newNamedBufferData(GLenum bufferType, GLuint& bufferId, uint bufferSize, co
 
 void fillNonPersistentBuffers()
 {
-    auto buffersSize = _objectCount * TRIPPLE_BUFFER;
-    auto drawIndexBufferSize = _drawCount * TRIPPLE_BUFFER;
+    auto buffersSize = _objectCount * TRIPLE_BUFFER;
+    auto drawIndexBufferSize = _drawCount * TRIPLE_BUFFER;
     auto indicesCount = _indices.size();
 
-    _interleavedPositionTexCoordBuffer = new float[buffersSize * _vertices.size() * 5];
+    _interleavedBuffer = new float[buffersSize * _vertices.size() * 5];
     _indicesBuffer = new uint[buffersSize * indicesCount];
     _drawIndexBuffer = new uint[drawIndexBufferSize];
 
@@ -373,11 +370,11 @@ void fillNonPersistentBuffers()
             auto position = vertex.GetPosition();
             auto texCoord = vertex.GetTexCoord();
             
-            _interleavedPositionTexCoordBuffer[++index] = position.x;
-            _interleavedPositionTexCoordBuffer[++index] = position.y;
-            _interleavedPositionTexCoordBuffer[++index] = position.z;
-            _interleavedPositionTexCoordBuffer[++index] = texCoord.x;
-            _interleavedPositionTexCoordBuffer[++index] = texCoord.y;
+            _interleavedBuffer[++index] = position.x;
+            _interleavedBuffer[++index] = position.y;
+            _interleavedBuffer[++index] = position.z;
+            _interleavedBuffer[++index] = texCoord.x;
+            _interleavedBuffer[++index] = texCoord.y;
         }
     }
 
@@ -399,14 +396,13 @@ void createNonPersistentBuffers()
     glCreateVertexArrays(1, &_vaoId);
     glBindVertexArray(_vaoId);
 
-    _interleavedPositionsTexCoordBufferSize = _vertices.size() * 5 * sizeof(float) * _objectCount;
-    _texCoordsBufferSize = _vertices.size() * 2 * sizeof(float) * _objectCount;
+    _interleavedBufferSize = _vertices.size() * 5 * sizeof(float) * _objectCount;
     _drawIndexBufferSize = _drawCount * sizeof(GLuint);
     _indicesBufferSize = _indices.size() * sizeof(uint) * _objectCount;
     auto materialBufferSize = sizeof(materialData) * _materialsCount;
 
     auto floatSize = sizeof(float);
-    newNamedBufferData(GL_ARRAY_BUFFER, _interleavedPositionsTexCoordBufferId, _interleavedPositionsTexCoordBufferSize, _interleavedPositionTexCoordBuffer);
+    newNamedBufferData(GL_ARRAY_BUFFER, _interleavedPositionsTexCoordBufferId, _interleavedBufferSize, _interleavedBuffer);
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, floatSize * 5, 0);
@@ -430,7 +426,7 @@ void createPersistentBuffers()
     _modelMatricesBufferSize = sizeof(glm::mat4) * _drawCount;
     _mdiCmdBufferSize = _objectCount * sizeof(mdiCmd);
 
-    _modelMatricesBuffer = (glm::mat4*) newPersistentBuffer(GL_ARRAY_BUFFER, _modelMatricesBufferId, _modelMatricesBufferSize * TRIPPLE_BUFFER);
+    _modelMatricesBuffer = (glm::mat4*) newPersistentBuffer(GL_ARRAY_BUFFER, _modelMatricesBufferId, _modelMatricesBufferSize * TRIPLE_BUFFER);
     for(unsigned int i = 0; i < 4; i++)
     {
         glEnableVertexAttribArray(3 + i);
@@ -443,7 +439,7 @@ void createPersistentBuffers()
 
 void fillPersistentBuffers()
 {
-    for(auto v = 0; v < _drawCount * TRIPPLE_BUFFER; v++)
+    for(auto v = 0; v < _drawCount * TRIPLE_BUFFER; v++)
     {
         auto x = randf(-0.5f, 0.5f) * 10.0f;
         auto y = randf(-0.5f, 0.5f) * 10.0f;
@@ -471,7 +467,7 @@ void fillPersistentBuffers()
     auto indexCount = _indices.size();
     auto vertexCount = _vertices.size();
 
-    for(uint i = 0; i < _objectCount; i++)
+    for(auto i = 0; i < _objectCount; i++)
     {
         _mdiCmdBuffer[i].count = indexCount;
         _mdiCmdBuffer[i].instanceCount = _instanceCount;
@@ -515,7 +511,7 @@ bool init()
     createPersistentBuffers();
     fillPersistentBuffers();
 
-    for(size_t i = 0; i < TRIPPLE_BUFFER; i++)
+    for(size_t i = 0; i < TRIPLE_BUFFER; i++)
     {
         _drawFences.push_back(GLsync());
     }
@@ -609,7 +605,7 @@ void input()
 void updateMdiCmdBuffer()
 {
     for(uint i = 0; i < _objectCount; i++)
-        _mdiCmdBuffer[i].firstIndex = _drawRange * _mdiCmdBuffer[i].count;
+        _mdiCmdBuffer[i].firstIndex = _drawRange * 36;
 }
 
 void updateModelMatricesBuffer()
@@ -642,13 +638,18 @@ void update()
 {
     if(_camera == nullptr)
         return;
+    
+    auto x = glm::cos(t);
+    auto z = glm::sin(t);
+
+    t += i;
 
     _camera->update();
 
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
 
     updateModelMatricesBuffer();
-    updateMdiCmdBuffer();
+    //updateMdiCmdBuffer();
 }
 
 void render()
@@ -659,7 +660,7 @@ void render()
 
     glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, NULL, _objectCount, 0);
     _lastDrawRange = _drawRange;
-    _drawRange = ++_drawRange % TRIPPLE_BUFFER;
+    _drawRange = ++_drawRange % TRIPLE_BUFFER;
 }
 
 void lock()
