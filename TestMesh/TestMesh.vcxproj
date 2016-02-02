@@ -119,7 +119,6 @@
     <ClCompile Include="shader.cpp" />
     <ClCompile Include="stopwatch.cpp" />
     <ClCompile Include="texture.cpp" />
-    <ClCompile Include="vertex.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shader.frag" />

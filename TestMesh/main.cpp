@@ -21,7 +21,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <ctime>
-//#include <GL\GL.h>
+
+#include "bufferLockManager.h"
 
 typedef struct
 {
@@ -58,6 +59,8 @@ typedef struct
 }
 materialData;
 
+bufferLockManager _bufferLockManager = bufferLockManager(true);
+
 stopwatch _stopwatch;
 
 SDL_Window* _window;
@@ -69,38 +72,39 @@ const uint TRIPLE_BUFFER = 3;
 std::vector<geometry*> _geometries;
 
 std::vector<material*> _materialsLibrary;
-std::vector<materialData> _materialsBuffer;
 std::vector<texture*> _diffuseTextures;
 std::vector<texture*> _normalTextures;
 
 uint _texturesCount = 2;
-uint _materialsCount = 100;
+uint _materialsCount = 2;
 uint _objectCount = 100;
 uint _instanceCount = 1000;
 uint _drawCount = _objectCount * _instanceCount;
 
+std::vector<drawData> _drawData;
 std::vector<vertex> _vertices;
 std::vector<uint> _indices;
 
 uint _vaoId = 0;
-uint _interleavedPositionsTexCoordBufferId = 0;
-uint _texCoordsBufferId = 0;
-uint _drawIndexBufferId = 0;
-uint _indicesBufferId = 0;
+uint _vboId = 0;
+uint _eboId = 0;
+uint _drawIdBufferId = 0;
 uint _mdiCmdBufferId = 0;
 uint _materialsBufferId = 0;
 uint _drawDataBufferId = 0;
 
-uint _interleavedBufferSize = 0;
-uint _drawIndexBufferSize = 0;
-uint _indicesBufferSize = 0;
+uint _vboSize = 0;
+uint _eboSize = 0;
+uint _drawIdBufferSize = 0;
 uint _mdiCmdBufferSize = 0;
+uint _materialsBufferSize = 0;
 uint _drawDataBufferSize = 0;
 
-float* _interleavedBuffer;
-uint* _drawIndexBuffer;
-uint* _indicesBuffer;
+vertex* _vbo;
+uint* _ebo;
+uint* _drawIdBuffer;
 mdiCmd* _mdiCmdBuffer;
+materialData* _materialsBuffer;
 drawData* _drawDataBuffer;
 
 shader* _shader;
@@ -124,11 +128,8 @@ glm::vec2 _lastMousePos;
 bool _rotating;
 glm::vec3 _cameraPos;
 float _rotationSpeed = 0.01f;
-
-float t = 0.00f;
-float i = 0.00f;
-float height = 0.0f;
-bool isDecreasingHeight = false;
+float _height = 0.0f;
+float _sign = 1.0f;
 uint _lastDrawRange = 0;
 uint _drawRange = 0;
 std::vector<GLsync> _drawFences;
@@ -277,6 +278,33 @@ material* createMaterial(texture* diffuseTexure, texture* normalTexture)
     return new material(diffuse, specular, diffuseTexure, normalTexture);
 }
 
+void createDrawData()
+{
+    for (auto i = 0; i < _drawCount; i++)
+    {
+        auto x = randf(-0.5f, 0.5f) * 10.0f;
+        auto y = randf(-0.5f, 0.5f) * 10.0f;
+        auto z = randf(-0.5f, 0.5f) * 10.0f;
+
+        auto mat = glm::mat4(
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            x, y, z, 1.0f);
+
+        auto matId = rand() % _materialsCount;
+
+        auto data = drawData();
+        data.m = mat;
+        data.materialId = matId;
+        data.pad0 = 0;
+        data.pad1 = 0;
+        data.pad2 = 0;
+
+        _drawData.push_back(data);
+    }
+}
+
 void createMaterials()
 {
     for(auto i = 0; i < _materialsCount; i++)
@@ -285,33 +313,11 @@ void createMaterials()
 
         _materialsLibrary.push_back(createMaterial(_diffuseTextures[r], _normalTextures[r]));
     }
-
-    for(auto i = 0; i < _materialsCount; i++)
-    {
-        auto material = _materialsLibrary[i];
-        auto data = materialData();
-        auto diffuseColor = material->getDiffuseColor();
-        data.diffuseR = diffuseColor.R;
-        data.diffuseG = diffuseColor.G;
-        data.diffuseB = diffuseColor.B;
-        data.diffuseA = diffuseColor.A;
-
-        auto specularColor = material->getSpecularColor();
-        data.specularR = specularColor.R;
-        data.specularG = specularColor.G;
-        data.specularB = specularColor.B;
-        data.specularA = specularColor.A;
-
-        data.diffuseHandle = material->getDiffuseTexture()->getHandle();
-        data.normalHandle = material->getNormalTexture()->getHandle();
-
-        _materialsBuffer.push_back(data);
-    }
 }
 
-void createTextures(uint n)
+void createTextures()
 {
-    for(auto i = 0; i < n; i++)
+    for(auto i = 0; i < _texturesCount; i++)
     {
         _diffuseTextures.push_back(texture::fromFile("diffuse.bmp"));
         _normalTextures.push_back(texture::fromFile("normal.bmp"));
@@ -324,9 +330,8 @@ void initShader()
 
     _shader->addAttribute("inPosition");
     _shader->addAttribute("inTexCoord");
+    _shader->addAttribute("inNormal");
     _shader->addAttribute("inDrawId");
-    _shader->addAttribute("inModelMatrix");
-    //_shader->addAttribute("inNormal");
 
     _shader->init();
     _shader->addUniform("vp", 0);
@@ -360,41 +365,57 @@ void newNamedBufferData(GLenum bufferType, GLuint& bufferId, uint bufferSize, co
 
 void fillNonPersistentBuffers()
 {
-    auto buffersSize = _objectCount * TRIPLE_BUFFER;
-    auto drawIndexBufferSize = _drawCount * TRIPLE_BUFFER;
+    auto verticesCount = _vertices.size();
     auto indicesCount = _indices.size();
+    auto tripleObjectsCount = _objectCount * TRIPLE_BUFFER;
+    auto tripleDrawCount = _drawCount * TRIPLE_BUFFER;
+    auto vertexSize = sizeof(vertex);
+    
+    _vboSize = sizeof(vertex) * verticesCount * tripleObjectsCount;
+    _eboSize = sizeof(GLuint) * indicesCount * tripleObjectsCount;
+    _drawIdBufferSize = sizeof(GLuint) * tripleDrawCount;
+    _materialsBufferSize = sizeof(materialData) * _materialsCount;
 
-    _interleavedBuffer = new float[buffersSize * _vertices.size() * 5];
-    _indicesBuffer = new uint[buffersSize * indicesCount];
-    _drawIndexBuffer = new uint[drawIndexBufferSize];
+    _vbo = new vertex[verticesCount * tripleObjectsCount];
+    _ebo = new GLuint[indicesCount * tripleObjectsCount];
+    _drawIdBuffer = new GLuint[tripleDrawCount];
+    _materialsBuffer = new materialData[_materialsCount];
 
-    int index = -1;
-
-    for(uint i = 0; i < buffersSize; i++)
+    for (uint i = 0; i < tripleObjectsCount; i++)
     {
-        for(auto vertex : _vertices)
+        for (uint j = 0; j < verticesCount; j++)
         {
-            auto position = vertex.GetPosition();
-            auto texCoord = vertex.GetTexCoord();
-            
-            _interleavedBuffer[++index] = position.x;
-            _interleavedBuffer[++index] = position.y;
-            _interleavedBuffer[++index] = position.z;
-            _interleavedBuffer[++index] = texCoord.x;
-            _interleavedBuffer[++index] = texCoord.y;
+            auto index = i * verticesCount + j;
+            _vbo[index] = _vertices[j];
+        }
+
+        for (uint j = 0; j < indicesCount; j++)
+        {
+            auto index = i * indicesCount + j;
+            _ebo[index] = _indices[j];
         }
     }
 
-    for(uint i = 0; i < drawIndexBufferSize; i++)
-        _drawIndexBuffer[i] = rand() % _materialsCount;
+    for(uint i = 0; i < tripleDrawCount; i++)
+        _drawIdBuffer[i] = i;
 
-    for(uint i = 0; i < buffersSize; i++)
+    for (auto i = 0; i < _materialsCount; i++)
     {
-        for(uint j = 0; j < indicesCount; j++)
-        {
-            auto index = i * indicesCount + j;
-            _indicesBuffer[index] = _indices[j];
-        }
+        auto material = _materialsLibrary[i];
+
+        auto diffuseColor = material->getDiffuseColor();
+        auto specularColor = material->getSpecularColor();
+
+        _materialsBuffer[i].diffuseR = diffuseColor.R;
+        _materialsBuffer[i].diffuseG = diffuseColor.G;
+        _materialsBuffer[i].diffuseB = diffuseColor.B;
+        _materialsBuffer[i].diffuseA = diffuseColor.A;
+        _materialsBuffer[i].specularR = specularColor.R;
+        _materialsBuffer[i].specularG = specularColor.G;
+        _materialsBuffer[i].specularB = specularColor.B;
+        _materialsBuffer[i].specularA = specularColor.A;
+        _materialsBuffer[i].diffuseHandle = material->getDiffuseTexture()->getHandle();
+        _materialsBuffer[i].normalHandle = material->getNormalTexture()->getHandle();
     }
 }
 
@@ -403,28 +424,25 @@ void createNonPersistentBuffers()
     glCreateVertexArrays(1, &_vaoId);
     glBindVertexArray(_vaoId);
 
-    _interleavedBufferSize = _vertices.size() * 5 * sizeof(float) * _objectCount;
-    _drawIndexBufferSize = _drawCount * sizeof(GLuint);
-    _indicesBufferSize = _indices.size() * sizeof(uint) * _objectCount;
-    auto materialBufferSize = sizeof(materialData) * _materialsCount;
-
+    auto vertexSize = sizeof(vertex);
     auto floatSize = sizeof(float);
-    newNamedBufferData(GL_ARRAY_BUFFER, _interleavedPositionsTexCoordBufferId, _interleavedBufferSize, _interleavedBuffer);
+
+    newNamedBufferData(GL_ARRAY_BUFFER, _vboId, _vboSize, _vbo);
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, floatSize * 5, 0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, floatSize * 5, (void*)(floatSize * 3));
-    //floatSize * 5: is the number in bytes for the next ocurrence in the buffer of the beggining of that particular attribute
-    //(void*)(floatSize * 3): is the initial offset for the beggining of that particular attribute. Before the texCoords there are 3 floats (x,y,z) in the buffer
-
-    newNamedBufferData(GL_ARRAY_BUFFER, _drawIndexBufferId, _drawIndexBufferSize, _drawIndexBuffer);
     glEnableVertexAttribArray(2);
-    glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, 0, 0);
-    glVertexAttribDivisor(2, 1);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertexSize, (void*)0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, vertexSize, (void*)(floatSize * 3));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, vertexSize, (void*)(floatSize * 5));
 
-    newNamedBufferData(GL_ELEMENT_ARRAY_BUFFER, _indicesBufferId, _indicesBufferSize, _indicesBuffer);
+    newNamedBufferData(GL_ARRAY_BUFFER, _drawIdBufferId, _drawIdBufferSize, _drawIdBuffer);
+    glEnableVertexAttribArray(3);
+    glVertexAttribIPointer(3, 1, GL_UNSIGNED_INT, 0, (void*)0);
+    glVertexAttribDivisor(3, 1);
 
-    newNamedBufferData(GL_SHADER_STORAGE_BUFFER, _materialsBufferId, materialBufferSize, &_materialsBuffer[0]);
+    newNamedBufferData(GL_ELEMENT_ARRAY_BUFFER, _eboId, _eboSize, _ebo);
+
+    newNamedBufferData(GL_SHADER_STORAGE_BUFFER, _materialsBufferId, _materialsBufferSize, &_materialsBuffer[0]);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _materialsBufferId);
 }
 
@@ -452,32 +470,8 @@ void fillPersistentBuffers()
         _mdiCmdBuffer[i].baseVertex = i * vertexCount;
         _mdiCmdBuffer[i].baseInstance = i * _instanceCount;
     }
-
-    for (auto i = 0; i < _drawCount; i++)
-    {
-        auto x = randf(-0.5f, 0.5f) * 10.0f;
-        auto y = randf(-0.5f, 0.5f) * 10.0f;
-        auto z = randf(-0.5f, 0.5f) * 10.0f;
-
-        auto mat = glm::mat4(
-            1.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f,
-            x, y, z, 1.0f);
-
-        auto matId = rand() % _materialsCount;
-
-        for (auto j = 0; j < TRIPLE_BUFFER; j++)
-        {
-            auto index = j * _drawCount + i;
-
-            _drawDataBuffer[index].m = mat;
-            _drawDataBuffer[index].materialId = matId;
-            _drawDataBuffer[index].pad0 = 0;
-            _drawDataBuffer[index].pad1 = 0;
-            _drawDataBuffer[index].pad2 = 0;
-        }
-    }
+    
+    memcpy(_drawDataBuffer, &_drawData[0], sizeof(drawData) * _drawData.size());
 }
 
 bool init()
@@ -504,7 +498,8 @@ bool init()
     initShader();
     initCamera();
 
-    createTextures(_texturesCount);
+    createDrawData();
+    createTextures();
     createMaterials();
     createCubes();
 
@@ -606,38 +601,33 @@ void input()
 void updateMdiCmdBuffer()
 {
     for(uint i = 0; i < _objectCount; i++)
-        _mdiCmdBuffer[i].firstIndex = _drawRange * _mdiCmdBuffer[i].count;
+        _mdiCmdBuffer[i].firstIndex = _drawRange * 36;
 }
-
-float s = 1.0f;
 
 void updateModelMatricesBuffer()
 {
-    for(auto i = _drawRange * _drawCount; i < _drawCount; i++)
-        _drawDataBuffer[i].m[3][1] += height;
+    for (uint i = 0; i < _drawCount; i++)
+        _drawData[i].m[3][1] += _height;
 
-    if (glm::abs(height) > 0.5f)
-        s *= -1.0f;
+    memcpy(_drawDataBuffer + (_drawRange * _drawCount), &_drawData[0], sizeof(drawData) * _drawData.size());
+ 
+    if (glm::abs(_height) > 0.5f)
+        _sign *= -1.0f;
 
-    height += 0.01f * s;
+    _height += 0.01f * _sign;
 }
 
 void update()
 {
     if(_camera == nullptr)
         return;
-    
-    auto x = glm::cos(t);
-    auto z = glm::sin(t);
-
-    t += i;
 
     _camera->update();
 
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
 
     updateModelMatricesBuffer();
-    //updateMdiCmdBuffer();
+    updateMdiCmdBuffer();
 }
 
 void render()
@@ -654,13 +644,12 @@ void render()
 
 void lock()
 {
-    _drawFences[_lastDrawRange] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+    _bufferLockManager.lockRange(_lastDrawRange, 1);
 }
 
 void waitLock()
 {
-    glClientWaitSync(_drawFences[_drawRange], GL_SYNC_FLUSH_COMMANDS_BIT, GL_TIMEOUT_IGNORED);
-    glDeleteSync(_drawFences[_drawRange]);
+    _bufferLockManager.waitForLockedRange(_drawRange, 1);
 }
 
 void loop()
@@ -669,14 +658,14 @@ void loop()
     {
         input();
 
-        waitLock();
+        //waitLock();
 
         update();
 
         stopwatch::MeasureInMilliseconds([&]
         {
             render();
-            lock();
+            //lock();
             SDL_GL_SwapWindow(_window);
         }, "render");
     }
@@ -692,18 +681,17 @@ void release()
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(0);
 
-    glDeleteBuffers(1, &_interleavedPositionsTexCoordBufferId);
-    glDeleteBuffers(1, &_texCoordsBufferId);
-    glDeleteBuffers(1, &_drawDataBufferId);
-    glDeleteBuffers(1, &_drawIndexBufferId);
-    glDeleteBuffers(1, &_indicesBufferId);
+    glDeleteBuffers(1, &_vboId);
+    glDeleteBuffers(1, &_drawIdBufferId);
+    glDeleteBuffers(1, &_eboId);
     glDeleteBuffers(1, &_mdiCmdBufferId);
     glDeleteBuffers(1, &_materialsBufferId);
+    glDeleteBuffers(1, &_drawDataBufferId);
 
-    delete[] _interleavedBuffer;
-    delete[] _drawIndexBuffer;
+    delete[] _vbo;
+    delete[] _ebo;
+    delete[] _drawIdBuffer;
     delete[] _drawDataBuffer;
-    delete[] _indicesBuffer;
     delete[] _mdiCmdBuffer;
 
     glDeleteProgram(_shader->getId());

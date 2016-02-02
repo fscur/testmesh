@@ -97,16 +97,16 @@ void geometry::createBuffers(std::vector<vertex> &vertices,
 
     for (auto vertex : vertices)
     {
-        GLfloat x = vertex.GetPosition().x;
-        GLfloat y = vertex.GetPosition().y;
-        GLfloat z = vertex.GetPosition().z;
+        GLfloat x = vertex.position.x;
+        GLfloat y = vertex.position.y;
+        GLfloat z = vertex.position.z;
 
-        GLfloat u = vertex.GetTexCoord().x;
-        GLfloat v = vertex.GetTexCoord().y;
+        GLfloat u = vertex.texCoord.x;
+        GLfloat v = vertex.texCoord.y;
 
-        GLfloat r0 = vertex.GetNormal().x;
-        GLfloat s0 = vertex.GetNormal().y;
-        GLfloat t0 = vertex.GetNormal().z;
+        GLfloat r0 = vertex.normal.x;
+        GLfloat s0 = vertex.normal.y;
+        GLfloat t0 = vertex.normal.z;
 
         vertexBuffer[vIndex++] = x;
         vertexBuffer[vIndex++] = y;
