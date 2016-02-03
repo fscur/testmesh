@@ -70,7 +70,6 @@ FT_Library freeLib;
 const uint TRIPLE_BUFFER = 3;
 
 std::vector<geometry*> _geometries;
-
 std::vector<material*> _materialsLibrary;
 std::vector<texture*> _diffuseTextures;
 std::vector<texture*> _normalTextures;
@@ -422,7 +421,7 @@ void fillNonPersistentBuffers()
         for (auto i = 0; i < _objectCount; i++)
         {
             mdiCmdBuffer[i].count = indexCount;
-            mdiCmdBuffer[i].instanceCount = _instanceCount;
+            mdiCmdBuffer[i].instanceCount = 0;
             mdiCmdBuffer[i].firstIndex = j * indexCount;
             mdiCmdBuffer[i].baseVertex = i * vertexCount;
             mdiCmdBuffer[i].baseInstance = i * _instanceCount;
