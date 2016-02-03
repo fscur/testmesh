@@ -76,7 +76,7 @@ std::vector<texture*> _diffuseTextures;
 std::vector<texture*> _normalTextures;
 
 uint _texturesCount = 2;
-uint _materialsCount = 2;
+uint _materialsCount = 100;
 uint _objectCount = 100;
 uint _instanceCount = 1000;
 uint _drawCount = _objectCount * _instanceCount;
@@ -89,7 +89,7 @@ uint _vaoId = 0;
 uint _vboId = 0;
 uint _eboId = 0;
 uint _drawIdBufferId = 0;
-uint _mdiCmdBufferId = 0;
+std::vector<uint> _mdiCmdBufferIds;
 uint _materialsBufferId = 0;
 uint _drawDataBufferId = 0;
 
@@ -106,6 +106,8 @@ uint* _drawIdBuffer;
 mdiCmd* _mdiCmdBuffer;
 materialData* _materialsBuffer;
 drawData* _drawDataBuffer;
+
+std::vector<mdiCmd*> _mdiCmdBuffers;
 
 shader* _shader;
 texture* _texture;
@@ -170,7 +172,7 @@ bool createGLWindow()
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 32);
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 0);
 
     _glContext = SDL_GL_CreateContext(_window);
 
@@ -179,6 +181,8 @@ bool createGLWindow()
         LOG("Could not create context:" << SDL_GetError());
         return false;
     }
+
+    SDL_GL_MakeCurrent(_window, _glContext);
 
     glewExperimental = GL_TRUE;
 
@@ -193,15 +197,6 @@ bool createGLWindow()
     SDL_GL_SetSwapInterval(0);
 
     return true;
-}
-
-bool initGL()
-{
-    glClearColor(0.0f, 0.0f, 0.0f, 0.5f);
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_DEPTH_TEST);
-
-    return glGetError() != GL_FALSE;
 }
 
 void createCubes()
@@ -375,7 +370,6 @@ void fillNonPersistentBuffers()
     _eboSize = sizeof(GLuint) * indicesCount * tripleObjectsCount;
     _drawIdBufferSize = sizeof(GLuint) * tripleDrawCount;
     _materialsBufferSize = sizeof(materialData) * _materialsCount;
-
     _vbo = new vertex[verticesCount * tripleObjectsCount];
     _ebo = new GLuint[indicesCount * tripleObjectsCount];
     _drawIdBuffer = new GLuint[tripleDrawCount];
@@ -417,6 +411,25 @@ void fillNonPersistentBuffers()
         _materialsBuffer[i].diffuseHandle = material->getDiffuseTexture()->getHandle();
         _materialsBuffer[i].normalHandle = material->getNormalTexture()->getHandle();
     }
+
+    auto indexCount = _indices.size();
+    auto vertexCount = _vertices.size();
+
+    for (auto j = 0; j < TRIPLE_BUFFER; j++)
+    {
+        auto mdiCmdBuffer = new mdiCmd[_objectCount];
+        
+        for (auto i = 0; i < _objectCount; i++)
+        {
+            mdiCmdBuffer[i].count = indexCount;
+            mdiCmdBuffer[i].instanceCount = _instanceCount;
+            mdiCmdBuffer[i].firstIndex = j * indexCount;
+            mdiCmdBuffer[i].baseVertex = i * vertexCount;
+            mdiCmdBuffer[i].baseInstance = i * _instanceCount;
+        }
+
+        _mdiCmdBuffers.push_back(mdiCmdBuffer);
+    }
 }
 
 void createNonPersistentBuffers()
@@ -444,34 +457,34 @@ void createNonPersistentBuffers()
 
     newNamedBufferData(GL_SHADER_STORAGE_BUFFER, _materialsBufferId, _materialsBufferSize, &_materialsBuffer[0]);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, _materialsBufferId);
+
+    _mdiCmdBufferSize = _objectCount * sizeof(mdiCmd);
+
+    for (auto i = 0; i < TRIPLE_BUFFER; i++)
+    {
+        uint bufferId;
+        newNamedBufferData(GL_DRAW_INDIRECT_BUFFER, bufferId, _mdiCmdBufferSize, _mdiCmdBuffers[i]);
+        _mdiCmdBufferIds.push_back(bufferId);
+    }
 }
 
 void createPersistentBuffers()
 {
-    _mdiCmdBufferSize = _objectCount * sizeof(mdiCmd);
     _drawDataBufferSize = _drawCount * sizeof(drawData);
-
-    _mdiCmdBuffer = (mdiCmd*) newPersistentBuffer(GL_DRAW_INDIRECT_BUFFER, _mdiCmdBufferId, _mdiCmdBufferSize);
-
     _drawDataBuffer = (drawData*)newPersistentBuffer(GL_SHADER_STORAGE_BUFFER, _drawDataBufferId, _drawDataBufferSize * TRIPLE_BUFFER);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, _drawDataBufferId);
 }
 
 void fillPersistentBuffers()
 {
-    auto indexCount = _indices.size();
-    auto vertexCount = _vertices.size();
-
-    for(auto i = 0; i < _objectCount; i++)
-    {
-        _mdiCmdBuffer[i].count = indexCount;
-        _mdiCmdBuffer[i].instanceCount = _instanceCount;
-        _mdiCmdBuffer[i].firstIndex = 0;
-        _mdiCmdBuffer[i].baseVertex = i * vertexCount;
-        _mdiCmdBuffer[i].baseInstance = i * _instanceCount;
-    }
-    
     memcpy(_drawDataBuffer, &_drawData[0], sizeof(drawData) * _drawData.size());
+}
+
+void initGL()
+{
+    glClearColor(0.0f, 0.0f, 0.0f, 0.5f);
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
 }
 
 bool init()
@@ -485,14 +498,9 @@ bool init()
     auto error = FT_Init_FreeType(&freeLib);
 
     if(error)
-    {
         LOG("SDL could not initialize! SDL_Error: " << SDL_GetError());
-    }
 
     if(!createGLWindow())
-        return false;
-
-    if(!initGL())
         return false;
 
     initShader();
@@ -509,10 +517,10 @@ bool init()
     createPersistentBuffers();
     fillPersistentBuffers();
 
-    for(size_t i = 0; i < TRIPLE_BUFFER; i++)
+    for(auto i = 0; i < TRIPLE_BUFFER; i++)
         _drawFences.push_back(GLsync());
 
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    initGL();
 
     return true;
 }
@@ -598,12 +606,6 @@ void input()
     }
 }
 
-void updateMdiCmdBuffer()
-{
-    for(uint i = 0; i < _objectCount; i++)
-        _mdiCmdBuffer[i].firstIndex = _drawRange * 36;
-}
-
 void updateModelMatricesBuffer()
 {
     for (uint i = 0; i < _drawCount; i++)
@@ -627,7 +629,6 @@ void update()
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
 
     updateModelMatricesBuffer();
-    updateMdiCmdBuffer();
 }
 
 void render()
@@ -635,8 +636,10 @@ void render()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     _shader->getUniform(0).set(_projectionMatrix * _viewMatrix);
-
+    
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, _mdiCmdBufferIds[_drawRange]);
     glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, nullptr, _objectCount, 0);
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, 0);
 
     _lastDrawRange = _drawRange;
     _drawRange = ++_drawRange % TRIPLE_BUFFER;
@@ -658,14 +661,15 @@ void loop()
     {
         input();
 
-        //waitLock();
+        waitLock();
 
         update();
 
         stopwatch::MeasureInMilliseconds([&]
         {
             render();
-            //lock();
+            lock();
+            glFlush();
             SDL_GL_SwapWindow(_window);
         }, "render");
     }
@@ -684,7 +688,12 @@ void release()
     glDeleteBuffers(1, &_vboId);
     glDeleteBuffers(1, &_drawIdBufferId);
     glDeleteBuffers(1, &_eboId);
-    glDeleteBuffers(1, &_mdiCmdBufferId);
+    
+    for (auto i = 0; i < TRIPLE_BUFFER; i++)
+    {
+        glDeleteBuffers(1, &_mdiCmdBufferIds[i]);
+    }
+
     glDeleteBuffers(1, &_materialsBufferId);
     glDeleteBuffers(1, &_drawDataBufferId);
 
