@@ -22,6 +22,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v140</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
+    <UseOfMfc>Dynamic</UseOfMfc>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -58,12 +59,12 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../inc/freetype</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../inc/freetype;../inc</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>SDL2main.lib;SDL2.lib;SDL2_ttf.lib;SDL2_image.lib;glu32.lib;opengl32.lib;glew32.lib;nl.lib;freetype261.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>SDL2main.lib;SDL2.lib;SDL2_ttf.lib;SDL2_image.lib;glu32.lib;opengl32.lib;glew32.lib;nl.lib;freetype261.lib;pskernel.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../libs/win32</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -95,11 +96,16 @@
     <ClInclude Include="color.h" />
     <ClInclude Include="console.h" />
     <ClInclude Include="geometry.h" />
+    <ClInclude Include="lineMesh.h" />
     <ClInclude Include="material.h" />
     <ClInclude Include="mathUtils.h" />
     <ClInclude Include="octree.h" />
+    <ClInclude Include="parametricData.h" />
+    <ClInclude Include="parasolid.h" />
     <ClInclude Include="path.h" />
+    <ClInclude Include="ray.h" />
     <ClInclude Include="shader.h" />
+    <ClInclude Include="StdAfx.h" />
     <ClInclude Include="stopwatch.h" />
     <ClInclude Include="testMesh.h" />
     <ClInclude Include="texture.h" />
@@ -109,17 +115,22 @@
     <ClCompile Include="aabb.cpp" />
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="console.cpp" />
+    <ClCompile Include="frustrum.cpp" />
     <ClCompile Include="geometry.cpp" />
+    <ClCompile Include="lineMesh.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mathUtils.cpp" />
     <ClCompile Include="octree.cpp" />
     <ClCompile Include="path.cpp" />
     <ClCompile Include="shader.cpp" />
+    <ClCompile Include="StdAfx.cpp" />
     <ClCompile Include="stopwatch.cpp" />
     <ClCompile Include="texture.cpp" />
     <ClCompile Include="vertex.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="line_shader.frag" />
+    <None Include="line_shader.vert" />
     <None Include="shader.frag" />
     <None Include="shader.vert" />
   </ItemGroup>

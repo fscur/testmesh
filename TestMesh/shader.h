@@ -35,6 +35,7 @@ public:
 	void set(glm::vec2 value) { glUniform2f(_location, value.x, value.y); }
 	void set(glm::vec3 value) { glUniform3f(_location, value.x, value.y, value.z); }
 	void set(glm::vec4 value) { glUniform4f(_location, value.x, value.y, value.z, value.w); }
+    void set(std::vector<GLuint> value) { glUniform1uiv(_location, value.size(), value.data()); }
     void set(std::vector<GLint> value) { glUniform1iv(_location, value.size(), value.data()); }
     void set(std::vector<GLuint64> value) { glUniform1ui64vNV(_location, value.size(), value.data()); }
     void set(texture* value, GLuint index);

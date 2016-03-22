@@ -1,17 +1,14 @@
 #version 450
-#extension GL_ARB_bindless_texture: enable 
 
 in vec2 fragTexCoord;
-
-uniform int diffuseTextureArrayIndex;
-uniform float diffuseTexturePageIndex;
-uniform sampler2DArray textureArrays[32];
+in vec3 fragNormal;
+in int gl_PrimitiveID;
 
 layout (location = 0) out vec4 fragColor;
 
 void main()
 {
-	fragColor = texture(textureArrays[diffuseTextureArrayIndex], vec3(fragTexCoord.xy, diffuseTexturePageIndex));
-	//fragColor = texture(textureArrays[4], vec3(fragTexCoord.xy, 0));
-	//fragColor = vec4(0.0, 1.0, 0.0, 1.0);
+        vec3 lightPos = vec3(0.4, 0.3, 0.5);
+        float intensity = max(dot(normalize(lightPos), fragNormal), 0.2);
+        fragColor = vec4(1.0, 0.0, 0.0, 1.0)  * intensity;
 }

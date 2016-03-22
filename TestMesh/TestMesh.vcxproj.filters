@@ -60,6 +60,21 @@
     <ClInclude Include="material.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="StdAfx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lineMesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="parametricData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="parasolid.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ray.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="octree.cpp">
@@ -98,12 +113,27 @@
     <ClCompile Include="stopwatch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="StdAfx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="lineMesh.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="frustrum.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="shader.frag">
       <Filter>Resource Files</Filter>
     </None>
     <None Include="shader.vert">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="line_shader.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="line_shader.vert">
       <Filter>Resource Files</Filter>
     </None>
   </ItemGroup>

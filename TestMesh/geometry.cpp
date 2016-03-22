@@ -48,7 +48,7 @@ void geometry::addVertices(std::vector<vertex> &vertices, std::vector<uint> &ind
 
     glGenBuffers(1, &_verticesVbo);
     glBindBuffer(GL_ARRAY_BUFFER, _verticesVbo);
-    glBufferData(GL_ARRAY_BUFFER, verticesSize, vertexBuffer, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, verticesSize, vertexBuffer, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
@@ -60,7 +60,7 @@ void geometry::addVertices(std::vector<vertex> &vertices, std::vector<uint> &ind
 
     glGenBuffers(1, &_normalsVbo);
     glBindBuffer(GL_ARRAY_BUFFER, _normalsVbo);
-    glBufferData(GL_ARRAY_BUFFER, normalsSize, normalBuffer, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, normalsSize, normalBuffer, GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(2);
     glVertexAttribPointer((GLuint)2, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
@@ -79,7 +79,7 @@ void geometry::addVertices(std::vector<vertex> &vertices, std::vector<uint> &ind
 
     glGenBuffers(1, &_indicesVbo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indicesVbo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, _indicesSize, &indices[0], GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, _indicesSize, &indices[0], GL_DYNAMIC_DRAW);
 
     delete[] vertexBuffer;
     delete[] texCoordBuffer;
@@ -121,9 +121,56 @@ void geometry::createBuffers(std::vector<vertex> &vertices,
     }
 }
 
+void geometry::change(std::vector<vertex> &vertices, std::vector<uint> &indices)
+{
+    _vertices = vertices;
+    _indices = indices;
+
+    GLuint verticesSize = vertices.size() * 3 * sizeof(GLfloat);
+    GLuint texCoordsSize = vertices.size() * 2 * sizeof(GLfloat);
+    GLuint normalsSize = vertices.size() * 3 * sizeof(GLfloat);
+    _indicesCount = indices.size();
+    _indicesSize = _indicesCount * sizeof(GLuint);
+    GLfloat* vertexBuffer = new GLfloat[vertices.size() * 3];
+    GLfloat* texCoordBuffer = new GLfloat[vertices.size() * 2];
+    GLfloat* normalBuffer = new GLfloat[vertices.size() * 3];
+
+    createBuffers(vertices, vertexBuffer, texCoordBuffer, normalBuffer);
+
+    glBindBuffer(GL_ARRAY_BUFFER, _verticesVbo);
+    glBufferData(GL_ARRAY_BUFFER, verticesSize, vertexBuffer, GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indicesVbo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, _indicesSize, &indices[0], GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, _normalsVbo);
+    glBufferData(GL_ARRAY_BUFFER, normalsSize, normalBuffer, GL_DYNAMIC_DRAW);
+}
+
 void geometry::bind()
 {
     glBindVertexArray(_vao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, _verticesVbo);
+    glEnableVertexAttribArray(0);
+    //glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, _texCoordsVbo);
+    glEnableVertexAttribArray(1);
+    //glVertexAttribPointer((GLuint)1, 2, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, _normalsVbo);
+    glEnableVertexAttribArray(2);
+    //glVertexAttribPointer((GLuint)2, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    for (unsigned int i = 0; i < 4; i++)
+    {
+        glEnableVertexAttribArray(3 + i);
+        //glVertexAttribPointer(3 + i, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (const GLvoid*)(sizeof(GLfloat) * i * 4));
+        //glVertexAttribDivisor(3 + i, 1);
+    }
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indicesVbo);
 }
 
 void geometry::unbind()
@@ -131,6 +178,8 @@ void geometry::unbind()
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);
+    for (unsigned int i = 0; i < 4; i++)
+        glDisableVertexAttribArray(3 + i);
 
     glBindVertexArray(0);
 }

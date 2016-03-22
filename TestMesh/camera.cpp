@@ -16,7 +16,7 @@ camera::~camera(void)
 void camera::setPosition(glm::vec3 position)
 {
     _position = position;
-    _direction = _target - _position;
+    //_direction = _target - _position;
     update();
 }
 
