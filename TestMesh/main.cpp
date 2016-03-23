@@ -31,8 +31,8 @@ std::vector<material*> _materials;
 std::vector<texture*> _diffuseTextures;
 std::vector<texture*> _normalTextures;
 
-uint _texturesCount = 100;
-uint _materialsCount = 100;
+uint _texturesCount = 5;
+uint _materialsCount = 5;
 
 shader* _shader;
 texture* _texture;
@@ -57,6 +57,8 @@ float _rotationSpeed = 0.01f;
 
 GLuint _materialsUbo;
 GLuint _transformsUbo;
+float t = 0.0f;
+float i = 0.01f;
 
 float randf(float fMin, float fMax)
 {
@@ -246,7 +248,7 @@ void createModelMatrices(uint n)
 
 void createCubes()
 {
-    auto n = 10000;
+    auto n = 100;
 
     for (auto i = 0; i < n; i++)
     {
@@ -287,11 +289,6 @@ void initShader()
     glBindBufferBase(GL_UNIFORM_BUFFER, 1, _materialsUbo);
 }
 
-void initTexture()
-{
-    _texture = texture::fromFile("C:\\test.bmp");
-}
-
 void initCamera()
 {
     _camera = new camera();
@@ -325,7 +322,6 @@ bool init()
         return false;
 
     initGL();
-    initTexture();
     createCubes();
     initShader();
     initCamera();
@@ -413,9 +409,6 @@ void input()
         }
     }
 }
-
-float t = 0.0f;
-float i = 0.01f;
 
 void printUniformBlocks()
 {
