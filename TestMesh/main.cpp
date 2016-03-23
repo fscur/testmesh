@@ -23,7 +23,7 @@ stopwatch _stopwatch;
 
 SDL_Window* _window;
 SDL_GLContext _glContext;
-FT_Library freeLib;
+FT_Library _freeTypeLibrary;
 
 std::vector<geometry*> _geometries;
 std::vector<glm::mat4> _modelMatrices;
@@ -59,6 +59,8 @@ GLuint _materialsUbo;
 GLuint _transformsUbo;
 float t = 0.0f;
 float i = 0.01f;
+
+geometry* _quad;
 
 float randf(float fMin, float fMax)
 {
@@ -121,143 +123,43 @@ bool createGLWindow()
     return true;
 }
 
+void initSDL()
+{
+    if (SDL_Init(SDL_INIT_VIDEO) < 0)
+        LOG("SDL could not initialize! SDL_Error: " << SDL_GetError());
+
+    TTF_Init();
+    IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_TIF);
+}
+
+void initFreeType()
+{
+    auto error = FT_Init_FreeType(&_freeTypeLibrary);
+
+    if (error)
+        LOG("SDL could not initialize! SDL_Error: " << SDL_GetError());
+}
+
 void initGL()
 {
-    glClearColor(0.0f, 0.0f, 0.0f, 0.5f);
+    glClearColor(1.0f, 0.0f, 0.0f, 0.5f);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
 }
 
-geometry* createCube()
+void createQuad()
 {
-    auto _octree = new octree(aabb(glm::vec3(-0.7, -0.7, -0.7), glm::vec3(0.7, 0.7, 0.7)), 5, 100);
-    auto vertices = std::vector<vertex>();
-    auto indices = std::vector<uint>();
-    auto addVertex = [&](vertex& vertex)
+    auto vertices = std::vector<vertex>
     {
-        uint index = -1;
-
-        if (_octree->insert(vertex, index))
-            vertices.push_back(vertex);
-
-        indices.push_back(index);
+        vertex(glm::vec3(-0.5f, -0.5f, +0.0f)),
+        vertex(glm::vec3(+0.5f, -0.5f, +0.0f)),
+        vertex(glm::vec3(+0.5f, +0.5f, +0.0f)),
+        vertex(glm::vec3(-0.5f, +0.5f, +0.0f))
     };
 
-    auto s = vertices.size();
+    auto indices = std::vector<uint> { 0, 1, 2, 2, 3, 0 };
 
-    addVertex(vertex(glm::vec3(-0.5f, -0.5f, +0.5f), glm::vec2(0.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
-    addVertex(vertex(glm::vec3(+0.5f, -0.5f, +0.5f), glm::vec2(1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
-    addVertex(vertex(glm::vec3(+0.5f, +0.5f, +0.5f), glm::vec2(1.0, 1.0), glm::vec3(0.0, 0.0, 1.0)));
-    addVertex(vertex(glm::vec3(+0.5f, +0.5f, +0.5f), glm::vec2(1.0, 1.0), glm::vec3(0.0, 0.0, 1.0)));
-    addVertex(vertex(glm::vec3(-0.5f, +0.5f, +0.5f), glm::vec2(0.0, 1.0), glm::vec3(0.0, 0.0, 1.0)));
-    addVertex(vertex(glm::vec3(-0.5f, -0.5f, +0.5f), glm::vec2(0.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
-
-    addVertex(vertex(glm::vec3(+0.5f, -0.5f, +0.5f), glm::vec2(0.0, 0.0), glm::vec3(1.0, 0.0, 0.0)));
-    addVertex(vertex(glm::vec3(+0.5f, -0.5f, -0.5f), glm::vec2(1.0, 0.0), glm::vec3(1.0, 0.0, 0.0)));
-    addVertex(vertex(glm::vec3(+0.5f, +0.5f, -0.5f), glm::vec2(1.0, 1.0), glm::vec3(1.0, 0.0, 0.0)));
-    addVertex(vertex(glm::vec3(+0.5f, +0.5f, -0.5f), glm::vec2(1.0, 1.0), glm::vec3(1.0, 0.0, 0.0)));
-    addVertex(vertex(glm::vec3(+0.5f, +0.5f, +0.5f), glm::vec2(0.0, 1.0), glm::vec3(1.0, 0.0, 0.0)));
-    addVertex(vertex(glm::vec3(+0.5f, -0.5f, +0.5f), glm::vec2(0.0, 0.0), glm::vec3(1.0, 0.0, 0.0)));
-
-    addVertex(vertex(glm::vec3(+0.5f, -0.5f, -0.5f), glm::vec2(0.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
-    addVertex(vertex(glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec2(1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
-    addVertex(vertex(glm::vec3(-0.5f, +0.5f, -0.5f), glm::vec2(1.0, 1.0), glm::vec3(0.0, 0.0, -1.0)));
-    addVertex(vertex(glm::vec3(-0.5f, +0.5f, -0.5f), glm::vec2(1.0, 1.0), glm::vec3(0.0, 0.0, -1.0)));
-    addVertex(vertex(glm::vec3(+0.5f, +0.5f, -0.5f), glm::vec2(0.0, 1.0), glm::vec3(0.0, 0.0, -1.0)));
-    addVertex(vertex(glm::vec3(+0.5f, -0.5f, -0.5f), glm::vec2(0.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
-
-    addVertex(vertex(glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec2(0.0, 0.0), glm::vec3(-1.0, 0.0, 0.0)));
-    addVertex(vertex(glm::vec3(-0.5f, -0.5f, +0.5f), glm::vec2(1.0, 0.0), glm::vec3(-1.0, 0.0, 0.0)));
-    addVertex(vertex(glm::vec3(-0.5f, +0.5f, +0.5f), glm::vec2(1.0, 1.0), glm::vec3(-1.0, 0.0, 0.0)));
-    addVertex(vertex(glm::vec3(-0.5f, +0.5f, +0.5f), glm::vec2(1.0, 1.0), glm::vec3(-1.0, 0.0, 0.0)));
-    addVertex(vertex(glm::vec3(-0.5f, +0.5f, -0.5f), glm::vec2(0.0, 1.0), glm::vec3(-1.0, 0.0, 0.0)));
-    addVertex(vertex(glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec2(0.0, 0.0), glm::vec3(-1.0, 0.0, 0.0)));
-
-    addVertex(vertex(glm::vec3(+0.5f, -0.5f, +0.5f), glm::vec2(0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
-    addVertex(vertex(glm::vec3(-0.5f, -0.5f, +0.5f), glm::vec2(1.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
-    addVertex(vertex(glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec2(1.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
-    addVertex(vertex(glm::vec3(-0.5f, -0.5f, -0.5f), glm::vec2(1.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
-    addVertex(vertex(glm::vec3(+0.5f, -0.5f, -0.5f), glm::vec2(0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
-    addVertex(vertex(glm::vec3(+0.5f, -0.5f, +0.5f), glm::vec2(0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
-
-    addVertex(vertex(glm::vec3(+0.5f, +0.5f, -0.5f), glm::vec2(0.0, 0.0), glm::vec3(0.0, 1.0, 0.0)));
-    addVertex(vertex(glm::vec3(-0.5f, +0.5f, -0.5f), glm::vec2(1.0, 0.0), glm::vec3(0.0, 1.0, 0.0)));
-    addVertex(vertex(glm::vec3(-0.5f, +0.5f, +0.5f), glm::vec2(1.0, 1.0), glm::vec3(0.0, 1.0, 0.0)));
-    addVertex(vertex(glm::vec3(-0.5f, +0.5f, +0.5f), glm::vec2(1.0, 1.0), glm::vec3(0.0, 1.0, 0.0)));
-    addVertex(vertex(glm::vec3(+0.5f, +0.5f, +0.5f), glm::vec2(0.0, 1.0), glm::vec3(0.0, 1.0, 0.0)));
-    addVertex(vertex(glm::vec3(+0.5f, +0.5f, -0.5f), glm::vec2(0.0, 0.0), glm::vec3(0.0, 1.0, 0.0)));
-
-    return geometry::create(vertices, indices);
-}
-
-material* createMaterial(texture* diffuseTexure, texture* normalTexture)
-{
-    auto r = randf(0.0f, 1.0f);
-    auto g = randf(0.0f, 1.0f);
-    auto b = randf(0.0f, 1.0f);
-
-    auto diffuse = color(r, g, b, 1);
-
-    r = randf(0.0f, 1.0f);
-    g = randf(0.0f, 1.0f);
-    b = randf(0.0f, 1.0f);
-
-    auto specular = color(r, g, b, 1);
-
-    return new material(diffuse, specular, diffuseTexure, normalTexture);
-}
-
-void createMaterials(uint n)
-{
-    _materials.push_back(
-        new material(color(0.0f, 0.0f, 0.5f, 1.0f), color(0.0f, 0.0f, 1.0f, 1.0f), _diffuseTextures[0], _diffuseTextures[0]));
-
-    _materials.push_back(
-        new material(color(0.2f, 0.0f, 0.2f, 1.0f), color(1.0f, 0.0f, 0.0f, 1.0f), _diffuseTextures[0], _diffuseTextures[0]));
-
-    for (auto i = 0; i < n -2; i++)
-    {
-        auto r = rand() % _texturesCount;
-
-        _materials.push_back(createMaterial(_diffuseTextures[r], _normalTextures[r]));
-    }
-}
-
-void createTextures(uint n)
-{
-    for (auto i = 0; i < n; i++)
-    {
-        _diffuseTextures.push_back(texture::fromFile("diffuse.bmp"));
-        _normalTextures.push_back(texture::fromFile("normal.bmp"));
-    }
-}
-
-void createModelMatrices(uint n)
-{
-    for (auto v = 0; v < n; v++)
-    {
-        auto mat = glm::mat4(
-            1.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 1.0f, 0.0f,
-            (float)randf(-0.5f, 0.5f) * 10.0f, (float)randf(-0.5f, 0.5f) * 10.0f, (float)randf(-0.5f, 0.5f) * 10.0f, 1.0f);
-
-        _modelMatrices.push_back(mat);
-    }
-}
-
-void createCubes()
-{
-    auto n = 100;
-
-    for (auto i = 0; i < n; i++)
-    {
-        _geometries.push_back(createCube());
-    }
-
-    createModelMatrices(n);
-    createTextures(_texturesCount);
-    createMaterials(_materialsCount);
+    _quad = geometry::create(vertices, indices);
 }
 
 void initShader()
@@ -271,22 +173,6 @@ void initShader()
     _shader->init();
     _shader->addUniform("v", 0);
     _shader->addUniform("p", 1);
-    _shader->addUniform("matIndex", 2);
-    _shader->addUniform("mIndex", 3);
-    
-    auto id = _shader->getId();
-
-    GLuint transformsBlockIndex = glGetUniformBlockIndex(id, "TransformsBlock");
-    GLuint materialsBlockIndex = glGetUniformBlockIndex(id, "MaterialsBlock");
-
-    glGenBuffers(1, &_transformsUbo);
-    glGenBuffers(1, &_materialsUbo);
-
-    glUniformBlockBinding(id, transformsBlockIndex, 0);
-    glUniformBlockBinding(id, materialsBlockIndex, 1);
-
-    glBindBufferBase(GL_UNIFORM_BUFFER, 0, _transformsUbo);
-    glBindBufferBase(GL_UNIFORM_BUFFER, 1, _materialsUbo);
 }
 
 void initCamera()
@@ -296,33 +182,18 @@ void initCamera()
     _camera->setTarget(glm::vec3(0.0f));
     _projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), 1024.0f / 768.0f, 0.1f, 100.0f);
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
-    _modelMatrix = glm::mat4(
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 bool init()
 {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0)
-        LOG("SDL could not initialize! SDL_Error: " << SDL_GetError());
-
-    TTF_Init();
-    IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_TIF);
-
-    auto error = FT_Init_FreeType(&freeLib);
-
-    if (error)
-    {
-        LOG("SDL could not initialize! SDL_Error: " << SDL_GetError());
-    }
+    initSDL();
+    initFreeType();
 
     if (!createGLWindow())
         return false;
 
     initGL();
-    createCubes();
+    createQuad();
     initShader();
     initCamera();
 
@@ -455,67 +326,6 @@ void update()
     _camera->update();
 
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
-
-    if (_materialChanged)
-    {
-        GLint blockSize;
-
-        auto id = _shader->getId();
-
-        GLuint blockIndex = glGetUniformBlockIndex(id, "MaterialsBlock");
-
-        glGetActiveUniformBlockiv(id, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
-
-        GLubyte * blockBuffer = (GLubyte *)malloc(blockSize);
-
-        for (auto i = 0; i < _materialsCount; i++)
-        {
-            auto material = _materials[i];
-            auto diffuseColor = material->getDiffuseColor();
-            auto specularColor = material->getSpecularColor();
-
-            GLfloat colors[] = {
-                diffuseColor.R,
-                diffuseColor.G,
-                diffuseColor.B,
-                diffuseColor.A,
-                specularColor.R,
-                specularColor.G,
-                specularColor.B,
-                specularColor.A };
-
-            GLuint64 handles[] =
-            {
-                material->getDiffuseTexture()->getHandle(),
-                material->getNormalTexture()->getHandle()
-            };
-
-            auto arrayStartPos = 48 * i;
-
-            memcpy(blockBuffer + arrayStartPos, colors, 32);
-            memcpy(blockBuffer + arrayStartPos + 32, handles, 16);
-        }
-
-        glBindBuffer(GL_UNIFORM_BUFFER, _materialsUbo);
-        glBufferData(GL_UNIFORM_BUFFER, blockSize, blockBuffer, GL_DYNAMIC_DRAW);
-
-        _materialChanged = false;
-    }
-
-    if (_transformChanged)
-    {
-        GLint blockSize;
-
-        auto id = _shader->getId();
-
-        GLuint blockIndex = glGetUniformBlockIndex(id, "TransformsBlock");
-
-        glGetActiveUniformBlockiv(id, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE, &blockSize);
-
-        glBindBuffer(GL_UNIFORM_BUFFER, _transformsUbo);
-        glBufferData(GL_UNIFORM_BUFFER, blockSize, &_modelMatrices[0], GL_DYNAMIC_DRAW);
-        _transformChanged = false;
-    }
 }
 
 void render()
@@ -526,19 +336,7 @@ void render()
     _shader->getUniform(0).set(_viewMatrix);
     _shader->getUniform(1).set(_projectionMatrix);
 
-    auto s = _geometries.size();
-
-    for (auto i = 0; i < s; i++)
-    {
-        auto geometry = _geometries[i];
-        auto matIndex = rand() % _materialsCount;
-        auto mat = _materials[matIndex];
-
-        _shader->getUniform(2).set(matIndex);
-        _shader->getUniform(3).set((uint)i);
-
-        geometry->render();
-    }
+    _quad->render();
 
     _shader->unbind();
 }
@@ -564,8 +362,11 @@ void loop()
         input();
         update();
 
-        auto s =stopwatch::Measure([] { render(); SDL_GL_SwapWindow(_window); });
-        std::cout << s * 1000 << std::endl;
+        //auto s =stopwatch::Measure([] { 
+            render(); 
+            SDL_GL_SwapWindow(_window); 
+        //});
+        //std::cout << s * 1000 << std::endl;
 
         frames++;
         processedTime += dt;
