@@ -155,9 +155,9 @@ uniform shader::getUniform(uint id)
 
 void uniform::set(texture* value, GLuint index)
 {
-    glActiveTexture(GL_TEXTURE0 + index);
+    /*glActiveTexture(GL_TEXTURE0 + index);
     glBindTexture(value->getTextureType(), value->getId());
-    glUniform1i(_location, index);
+    glUniform1i(_location, index);*/
 }
 
 void shader::initAttribs()

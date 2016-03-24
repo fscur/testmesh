@@ -1,43 +1,50 @@
-#ifndef _TEXTURE_H_
-#define _TEXTURE_H_
+#pragma once
+#include <GL\glew.h>
+#include "types.h"
 
-#if WIN32
-#include <GL/glew.h>
-#else
-#include <OpenGL/gl3.h>
-#endif
-
-#include <string>
-#include <vector>
-
-class texture
+struct texture
 {
-private:
-    GLuint _id;
-    GLuint _textureType;
-    GLuint64 _handle;
-
-protected:
-    GLuint _w;
-    GLuint _h;
-
-private:
-    texture(GLuint id, GLuint w, GLuint h);
+public:
+    GLuint id;
+    GLuint64 handle;
+    GLuint w;
+    GLuint h;
+    GLenum type;
+    GLenum internalFormat;
+    GLenum dataFormat;
+    GLenum dataType;
+    byte* data;
+    GLint wrapMode;
+    GLint minFilter;
+    GLint magFilter;
+    bool generateMipmaps;
 
 public:
-    ~texture();
+    texture(
+        uint w, 
+        uint h, 
+        GLenum type = GL_TEXTURE_2D,
+        GLenum internalFormat = GL_RGBA8,
+        GLenum dataFormat = GL_BGRA,
+        GLenum dataType = GL_UNSIGNED_BYTE,
+        byte* data = nullptr,
+        GLint wrapMode = GL_REPEAT,
+        GLint minFilter = GL_LINEAR_MIPMAP_LINEAR,
+        GLint magFilter = GL_LINEAR,
+        bool generateMipmaps = true) :
+        w(w),
+        h(h),
+        type(type),
+        internalFormat(internalFormat),
+        dataFormat(dataFormat),
+        dataType(dataType),
+        data(data),
+        wrapMode(wrapMode),
+        minFilter(minFilter),
+        magFilter(magFilter),
+        generateMipmaps(generateMipmaps)
+    {
+    }
 
-    inline GLuint getId() const { return _id; }
-    inline GLuint getWidth() const { return _w; }
-    inline GLuint getHeight() const { return _h; }
-    inline GLuint getTextureType() const { return _textureType; }
-    inline GLuint64 getHandle() const { return _handle; }
-    void bind(GLuint level = 0);
-    void setParam(GLenum name, GLint value);
-    void release();
-
-    static texture* fromFile(std::string fileName);
-    static texture* create(GLuint w, GLuint h, GLint internalFormat = GL_RGB32F, GLint format = GL_RGBA, GLint type = GL_FLOAT, GLuint level = 0, GLvoid* data = 0);
+    ~texture() {}
 };
-
-#endif

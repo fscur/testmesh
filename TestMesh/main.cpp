@@ -1,5 +1,5 @@
 #include "testMesh.h"
-
+#include "font.h"
 #include "geometry.h"
 #include "material.h"
 #include "shader.h"
@@ -23,7 +23,6 @@ stopwatch _stopwatch;
 
 SDL_Window* _window;
 SDL_GLContext _glContext;
-FT_Library _freeTypeLibrary;
 
 std::vector<geometry*> _geometries;
 std::vector<glm::mat4> _modelMatrices;
@@ -61,6 +60,7 @@ float t = 0.0f;
 float i = 0.01f;
 
 geometry* _quad;
+font* _font;
 
 float randf(float fMin, float fMax)
 {
@@ -92,7 +92,7 @@ bool createGLWindow()
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 4);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
 
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
@@ -132,19 +132,16 @@ void initSDL()
     IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_TIF);
 }
 
-void initFreeType()
-{
-    auto error = FT_Init_FreeType(&_freeTypeLibrary);
-
-    if (error)
-        LOG("SDL could not initialize! SDL_Error: " << SDL_GetError());
-}
-
 void initGL()
 {
-    glClearColor(1.0f, 0.0f, 0.0f, 0.5f);
+    glClearColor(1.0f, 0.8f, 0.0f, 1.0f);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
+}
+
+void initFont()
+{
+    _font = new font("Consola.ttf", 14);
 }
 
 void createQuad()
@@ -178,21 +175,25 @@ void initShader()
 void initCamera()
 {
     _camera = new camera();
-    _camera->setPosition(glm::vec3(0.0f, 3.0f, 5.0f));
+    _camera->setPosition(glm::vec3(0.0f, 0.0f, 5.0f));
     _camera->setTarget(glm::vec3(0.0f));
-    _projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), 1024.0f / 768.0f, 0.1f, 100.0f);
+    _camera->update();
+    //_projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), 1024.0f / 768.0f, 0.1f, 100.0f);
+    auto size = 1.0f;
+    auto aspect = 1024.0f / 768.0f;
+    _projectionMatrix = glm::ortho<float>(-size * aspect, size * aspect, -size, size, 0, 1000);
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
 }
 
 bool init()
 {
     initSDL();
-    initFreeType();
 
     if (!createGLWindow())
         return false;
 
     initGL();
+    initFont();
     createQuad();
     initShader();
     initCamera();
@@ -313,7 +314,7 @@ void printUniformBlocks()
 
 void update()
 {
-    if (_camera == nullptr)
+    /*if (_camera == nullptr)
         return;
 
     auto x = glm::cos(t);
@@ -325,7 +326,7 @@ void update()
     _camera->setPosition(pos);
     _camera->update();
 
-    _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
+    _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());*/
 }
 
 void render()
