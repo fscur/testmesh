@@ -9,15 +9,20 @@
 #include "texture.h"
 #include "octree.h"
 #include "stopwatch.h"
+#include "texturesManager.h"
+#include "buffer.h"
 
-#include <SDL/SDL.h>
-#include <SDL/SDL_TTF.h>
-#include <SDL/SDL_image.h>
-#include <freetype\ft2build.h>
-#include FT_FREETYPE_H
+#include <sdl\sdl.h>
+#include <sdl\sdl_ttf.h>
+#include <sdl\sdl_image.h>
+
 #include <glm\gtc\type_ptr.hpp>
+
+#include <windows.h>
+
 #include <algorithm>
 #include <memory>
+
 
 stopwatch _stopwatch;
 
@@ -59,16 +64,23 @@ GLuint _transformsUbo;
 float t = 0.0f;
 float i = 0.01f;
 
+struct glyphBlock
+{
+    int textureUnit;
+    float texturePage;
+};
+
 geometry* _quad;
 font* _font;
+texturesManager* _texManager;
+buffer* _glyphBuffer;
+glyphBlock _glyphBlock;
 
 float randf(float fMin, float fMax)
 {
     float f = (double)rand() / RAND_MAX;
     return fMin + f * (fMax - fMin);
 }
-
-#include <windows.h>
 
 extern "C" {
     _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
@@ -139,9 +151,30 @@ void initGL()
     glEnable(GL_DEPTH_TEST);
 }
 
+void initTexturesManager()
+{
+    _texManager = new texturesManager(false, false);
+}
+
 void initFont()
 {
     _font = new font("Consola.ttf", 14);
+    auto glyphTexture = _font->getGlyph(65);
+    auto texAddress = _texManager->add(glyphTexture);
+    _glyphBlock.textureUnit = texAddress.unit;
+    _glyphBlock.texturePage = texAddress.page;
+}
+
+void initGlyphBuffer()
+{
+    _glyphBuffer = new buffer(bufferTarget::uniform);
+
+    _glyphBuffer->data(
+        sizeof(glyphBlock),
+        &_glyphBlock,
+        bufferDataUsage::dynamicDraw);
+
+    _glyphBuffer->bindBufferBase(0);
 }
 
 void createQuad()
@@ -170,6 +203,7 @@ void initShader()
     _shader->init();
     _shader->addUniform("v", 0);
     _shader->addUniform("p", 1);
+    _shader->addUniform("textureArrays", 2);
 }
 
 void initCamera()
@@ -193,7 +227,9 @@ bool init()
         return false;
 
     initGL();
+    initTexturesManager();
     initFont();
+    initGlyphBuffer();
     createQuad();
     initShader();
     initCamera();
@@ -336,6 +372,7 @@ void render()
 
     _shader->getUniform(0).set(_viewMatrix);
     _shader->getUniform(1).set(_projectionMatrix);
+    _shader->getUniform(2).set(_texManager->units);
 
     _quad->render();
 

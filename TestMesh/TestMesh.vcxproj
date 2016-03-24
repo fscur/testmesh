@@ -88,6 +88,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="aabb.h" />
+    <ClInclude Include="buffer.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="color.h" />
     <ClInclude Include="console.h" />
@@ -106,9 +107,11 @@
     <ClInclude Include="texturesManager.h" />
     <ClInclude Include="types.h" />
     <ClInclude Include="vertex.h" />
+    <ClInclude Include="vertexBuffer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="aabb.cpp" />
+    <ClCompile Include="buffer.cpp" />
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="console.cpp" />
     <ClCompile Include="font.cpp" />
@@ -122,6 +125,7 @@
     <ClCompile Include="textureContainer.cpp" />
     <ClCompile Include="texturesManager.cpp" />
     <ClCompile Include="vertex.cpp" />
+    <ClCompile Include="vertexBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shader.frag" />
