@@ -37,7 +37,7 @@ public:
 	void set(glm::vec4 value) { glUniform4f(_location, value.x, value.y, value.z, value.w); }
     void set(std::vector<GLint> value) { glUniform1iv(_location, static_cast<GLsizei>(value.size()), value.data()); }
 
-    void set(texture* value, GLuint index);
+    void set(GLuint textureId, GLuint textureIndex);
 };
 
 class shader

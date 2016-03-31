@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 #include <windows.h>
-
+#include "types.h"
 
 bool path::exists(std::string path)
 {
@@ -64,18 +64,18 @@ std::vector<fileInfo> path::getFiles(const std::string directory)
     HANDLE dir;
     WIN32_FIND_DATA file_data;
 
-    if ((dir = FindFirstFile((directory + "/*").c_str(), &file_data)) == INVALID_HANDLE_VALUE)
+    if ((dir = FindFirstFile(s2ws(directory + "/*").c_str(), &file_data)) == INVALID_HANDLE_VALUE)
         return out; /* No files found */
 
     do
     {
-        const std::string file_name = file_data.cFileName;
-        const std::string full_file_name = directory + "\\" + file_name;
+        const std::wstring file_name = file_data.cFileName;
+        const std::wstring full_file_name = s2ws(directory + "\\") + file_name;
         const bool is_directory = (file_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
         fileInfo info;
-        info.name = file_name;
-        info.path = full_file_name;
+        info.name = ws2s(file_name);
+        info.path = ws2s(full_file_name);
 
         if (file_name[0] == '.')
             continue;
@@ -123,19 +123,19 @@ std::vector<directoryInfo> path::getDirectories(const std::string directory)
     HANDLE dir;
     WIN32_FIND_DATA file_data;
 
-    if ((dir = FindFirstFile((directory + "/*").c_str(), &file_data)) == INVALID_HANDLE_VALUE)
+    if ((dir = FindFirstFile(s2ws(directory + "/*").c_str(), &file_data)) == INVALID_HANDLE_VALUE)
         return out; /* No files found */
 
     do
     {
 
-        const std::string file_name = file_data.cFileName;
-        const std::string full_file_name = directory + "\\" + file_name;
+        const std::wstring file_name = file_data.cFileName;
+        const std::wstring full_file_name = s2ws(directory + "\\") + file_name;
         const bool is_directory = (file_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
         directoryInfo info;
-        info.name = file_name;
-        info.path = full_file_name;
+        info.name = ws2s(file_name);
+        info.path = ws2s(full_file_name);
 
         if (file_name[0] == '.')
             continue;

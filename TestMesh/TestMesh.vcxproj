@@ -21,7 +21,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v140</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -66,6 +66,13 @@
       <AdditionalDependencies>SDL2main.lib;SDL2.lib;SDL2_ttf.lib;SDL2_image.lib;glu32.lib;opengl32.lib;glew32.lib;nl.lib;freetype261.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../libs/win32</AdditionalLibraryDirectories>
     </Link>
+    <Manifest />
+    <Manifest>
+      <AdditionalManifestFiles>%(AdditionalManifestFiles)</AdditionalManifestFiles>
+    </Manifest>
+    <Manifest>
+      <EnableDpiAwareness>true</EnableDpiAwareness>
+    </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -88,16 +95,32 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="aabb.h" />
+    <ClInclude Include="application.h" />
     <ClInclude Include="buffer.h" />
     <ClInclude Include="camera.h" />
     <ClInclude Include="color.h" />
     <ClInclude Include="console.h" />
+    <ClInclude Include="eventArgs.h" />
+    <ClInclude Include="eventHandler.h" />
+    <ClInclude Include="eventSender.h" />
     <ClInclude Include="font.h" />
     <ClInclude Include="geometry.h" />
+    <ClInclude Include="glyph.h" />
+    <ClInclude Include="glyphNode.h" />
+    <ClInclude Include="guid.h" />
+    <ClInclude Include="input.h" />
+    <ClInclude Include="keyboardEventArgs.h" />
+    <ClInclude Include="keyboardEventHandler.h" />
+    <ClInclude Include="keycode.h" />
     <ClInclude Include="material.h" />
     <ClInclude Include="mathUtils.h" />
+    <ClInclude Include="mouseEventArgs.h" />
+    <ClInclude Include="mouseEventHandler.h" />
     <ClInclude Include="octree.h" />
     <ClInclude Include="path.h" />
+    <ClInclude Include="rectangle.h" />
+    <ClInclude Include="scancode.h" />
+    <ClInclude Include="screen.h" />
     <ClInclude Include="shader.h" />
     <ClInclude Include="stopwatch.h" />
     <ClInclude Include="testMesh.h" />
@@ -105,27 +128,38 @@
     <ClInclude Include="textureAddress.h" />
     <ClInclude Include="textureContainer.h" />
     <ClInclude Include="texturesManager.h" />
+    <ClInclude Include="time.h" />
     <ClInclude Include="types.h" />
     <ClInclude Include="vertex.h" />
     <ClInclude Include="vertexBuffer.h" />
+    <ClInclude Include="window.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="aabb.cpp" />
+    <ClCompile Include="application.cpp" />
     <ClCompile Include="buffer.cpp" />
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="console.cpp" />
     <ClCompile Include="font.cpp" />
     <ClCompile Include="geometry.cpp" />
+    <ClCompile Include="glyphNode.cpp" />
+    <ClCompile Include="guid.cpp" />
+    <ClCompile Include="guid_win64.cpp" />
+    <ClCompile Include="input.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mathUtils.cpp" />
     <ClCompile Include="octree.cpp" />
     <ClCompile Include="path.cpp" />
+    <ClCompile Include="screen.cpp" />
     <ClCompile Include="shader.cpp" />
     <ClCompile Include="stopwatch.cpp" />
     <ClCompile Include="textureContainer.cpp" />
     <ClCompile Include="texturesManager.cpp" />
+    <ClCompile Include="time.cpp" />
     <ClCompile Include="vertex.cpp" />
     <ClCompile Include="vertexBuffer.cpp" />
+    <ClCompile Include="window.cpp" />
+    <ClCompile Include="window_win64.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shader.frag" />

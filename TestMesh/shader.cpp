@@ -153,11 +153,11 @@ uniform shader::getUniform(uint id)
     return (*_uniforms)[id];
 }
 
-void uniform::set(texture* value, GLuint index)
+void uniform::set(GLuint textureId, GLuint textureIndex)
 {
-    /*glActiveTexture(GL_TEXTURE0 + index);
-    glBindTexture(value->getTextureType(), value->getId());
-    glUniform1i(_location, index);*/
+    glActiveTexture(GL_TEXTURE0 + textureIndex);
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    glUniform1i(_location, textureIndex);
 }
 
 void shader::initAttribs()

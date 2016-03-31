@@ -1,51 +1,25 @@
-#ifndef _PHI_STOPWATCH_H_
-#define _PHI_STOPWATCH_H_
-
-#include "console.h"
-
+#pragma once
 #include <chrono>
 #include <functional>
-
+#include <string>
 
 class stopwatch
 {
 private:
-    std::chrono::time_point<std::chrono::steady_clock> _initial;
-    std::chrono::time_point<std::chrono::steady_clock> _final;
-    std::chrono::nanoseconds _currentNanoSeconds = std::chrono::nanoseconds::zero();
+    std::chrono::nanoseconds _initial;
+    std::chrono::nanoseconds _stop;
+    //std::chrono::nanoseconds _currentNanoSeconds = std::chrono::nanoseconds::zero();
     bool _isRunning = false;
+
 public:
-    stopwatch() { };
-    ~stopwatch() { };
-    void Start();
-    void Stop();
-    void Reset();
-    void Restart();
-    const double GetElapsedSeconds();
-
-    static const double Measure(const std::function<void(void)> &function)
-    {
-        auto watch = stopwatch();
-        watch.Start();
-        function();
-        watch.Stop();
-
-        return watch.GetElapsedSeconds();
-    }
-
-    static const double Measure(const std::function<void(void)> &function, const std::string &functionName)
-    {
-        auto watch = stopwatch();
-        watch.Start();
-        function();
-        watch.Stop();
-
-        auto msg = functionName + " took: ";
-        auto elapsedSeconds = watch.GetElapsedSeconds();
-        console::WriteLine(msg + std::to_string(elapsedSeconds));
-
-        return elapsedSeconds;
-    }
+    stopwatch();
+    void start();
+    void stop();
+    void resume();
+    double getElapsedSeconds();
+    double getElapsedMilliseconds();
+    static double measure(const std::function<void(void)> &function);
+    static double measure(const std::function<void(void)> &function, const std::string &functionName);
+    static double measureAverage(const std::function<void(void)> &function, int numSamples);
+    static double measureAverage(const std::function<void(void)> &function, const std::string &functionName, int numSamples);
 };
-
-#endif

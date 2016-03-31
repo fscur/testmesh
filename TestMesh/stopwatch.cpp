@@ -1,36 +1,98 @@
 #include "stopwatch.h"
+#include <iostream>
 
-void stopwatch::Start()
+using namespace std::chrono;
+
+stopwatch::stopwatch() :
+    _initial(std::chrono::nanoseconds()),
+    _stop(std::chrono::nanoseconds()),
+    _isRunning(false)
+{
+}
+
+void stopwatch::start()
 {
     if (!_isRunning)
     {
         _isRunning = true;
-        _initial = std::chrono::high_resolution_clock::now();
+        auto now = high_resolution_clock::now();
+        _initial = _stop = duration_cast<nanoseconds>(now.time_since_epoch());
     }
 }
 
-void stopwatch::Stop()
+void stopwatch::stop()
 {
     if (_isRunning)
     {
-        _final = std::chrono::high_resolution_clock::now();
-        _currentNanoSeconds += _final - _initial;
+        auto now = high_resolution_clock::now();
+        _stop = duration_cast<nanoseconds>(now.time_since_epoch());
         _isRunning = false;
     }
 }
 
-void stopwatch::Reset()
+void stopwatch::resume()
 {
-    _currentNanoSeconds = std::chrono::nanoseconds::zero();
+    if (!_isRunning)
+    {
+        auto now = high_resolution_clock::now().time_since_epoch();
+        _initial += now - _stop;
+        _isRunning = true;
+    }
 }
 
-void stopwatch::Restart()
+double stopwatch::getElapsedSeconds()
 {
-    Reset();
-    Start();
+    auto now = high_resolution_clock::now().time_since_epoch();
+    return duration_cast<duration<double>>(now - _initial).count();
 }
 
-const double stopwatch::GetElapsedSeconds()
+double stopwatch::getElapsedMilliseconds()
 {
-    return std::chrono::duration_cast<std::chrono::duration<double>>(_currentNanoSeconds).count();
+    auto now = high_resolution_clock::now().time_since_epoch();
+    return duration_cast<duration<double>>(now - _initial).count() * 1000;
+}
+
+double stopwatch::measure(const std::function<void(void)> &function)
+{
+    auto watch = stopwatch();
+    watch.start();
+    function();
+    watch.stop();
+
+    return watch.getElapsedSeconds();
+}
+
+double stopwatch::measure(const std::function<void(void)> &function, const std::string &functionName)
+{
+    auto msg = functionName + " took: ";
+    auto elapsedSeconds = stopwatch::measure(function);
+    std::cout << msg + std::to_string(elapsedSeconds) << std::endl;
+
+    return elapsedSeconds;
+}
+
+double stopwatch::measureAverage(const std::function<void(void)> &function, int samples)
+{
+    double average = 0;
+    auto watch = stopwatch();
+
+    for (auto i = 0; i < samples; i++)
+    {
+        watch.resume();
+        function();
+        watch.stop();
+        average += watch.getElapsedSeconds();
+    }
+
+    return average / samples;
+}
+
+double stopwatch::measureAverage(const std::function<void(void)> &function, const std::string &functionName, int samples)
+{
+    double average = stopwatch::measureAverage(function, samples);
+
+    auto msg = "average of " + std::to_string(samples) + " samples for " + functionName + " took: ";
+    std::cout << msg + std::to_string(average) << std::endl;
+
+    return average;
 }

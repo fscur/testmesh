@@ -6,7 +6,6 @@
 class texturesManager
 {
 private:
-    const size_t MAX_CONTAINER_ITEMS = 10;
     std::map<
         std::tuple<GLsizei, GLsizei, GLsizei, GLenum, GLint, GLint, GLint>,
         std::vector<textureContainer*>> _containers;
@@ -23,7 +22,7 @@ public:
     std::vector<GLuint64> handles;
 
 public:
-    texturesManager(bool bindless, bool sparse);
+    texturesManager(bool bindless, bool sparse, size_t containerSize);
     ~texturesManager();
 
     textureAddress add(texture* texture);
