@@ -1,6 +1,7 @@
 #pragma once
 #include "types.h"
 #include "window.h"
+#include "fontManager.h"
 #include "font.h"
 #include "geometry.h"
 #include "shader.h"
@@ -21,6 +22,8 @@ private:
     shader* _shader;
     camera* _camera;
     geometry* _quad;
+    texturesManager* _texturesManager;
+    fontManager* _fontManager;
     font* _font;
     std::map<uint, GLuint> _glyphTextures;
     float _aspect = (float)_width / (float)_height;

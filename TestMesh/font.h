@@ -12,9 +12,8 @@
 
 class font
 {
-private:
-    static FT_Library _freeTypeLibrary;
-    static bool _freeTypeInitialized;
+public:
+    static FT_Library FreeTypeLibrary;
 
 private:
     std::map<uint, glyph*> _glyphCache;
@@ -31,15 +30,17 @@ private:
     glyphNode* _glyphAtlasRoot;
     GLuint _glyphAtlasId;
     GLint _glyphAtlasSize;
+    texture* _glyphAtlasTexture;
 
 public:
     font(std::string name, uint size);
     ~font();
-    glyph* getGlyph(const ulong &glyphChar);
-    glyph* getGlyph(const uint &glyphIndex);
+    glyph* getGlyph(const ulong& glyphChar);
+    glyph* getGlyph(const uint& glyphIndex);
     glm::ivec2 getKerning(glyph* firstGlyph, glyph* secondGlyph);
 
     int getLineHeight() const { return _lineHeight; }
     GLuint getGlyphAtlasId() const { return _glyphAtlasId; }
     GLint getGlyphAtlasSize() const { return _glyphAtlasSize; }
+    texture* getGlyphTexture() const { return _glyphAtlasTexture; }
 };

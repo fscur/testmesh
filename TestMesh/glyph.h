@@ -17,4 +17,5 @@ struct glyph
     float vertAdvance;
     glm::vec2 texPos;
     glm::vec2 texSize;
+    void* data;
 };

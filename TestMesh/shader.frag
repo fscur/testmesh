@@ -4,8 +4,8 @@ in vec3 fragPosition;
 in vec2 fragTexCoord;
 in vec3 fragNormal;
 
-//uniform sampler2DArray textureArrays[32];
-uniform sampler2D glyphTexture;
+uniform float glyphPage;
+uniform sampler2DArray glyphAtlas;
 uniform vec2 texelSize;
 uniform float shift;
 
@@ -19,20 +19,18 @@ float gamma = 1.75;
 
 out vec4 fragColor;
 
-//vec4 fetch()
-//{
-//    int array = glyphData.textureUnit;
-//    float page = glyphData.texturePage;
-//    return texture(textureArrays[array], vec3(fragTexCoord, page));
-//}
+vec4 fetch(vec2 uv)
+{
+    return texture(glyphAtlas, vec3(uv, glyphPage));
+}
 
 void main(void)
 {
     //fragColor = vec4(1.0) * texture2D(glyphTexture, vec2(r,s) + (fragTexCoord) * vec2(w, h)).r;
     //fragColor = vec4(1.0) * texture2D(glyphTexture, fragTexCoord);
 
-    vec4 current = texture2D(glyphTexture, fragTexCoord);
-    vec4 previous= texture2D(glyphTexture, fragTexCoord + vec2(-1.0, 0.0) * texelSize.xy);
+    vec4 current = fetch(fragTexCoord);
+    vec4 previous= fetch(fragTexCoord + vec2(-1.0, 0.0) * texelSize.xy);
 
     current = pow(current, vec4(1.0/gamma));
     previous= pow(previous, vec4(1.0/gamma));
