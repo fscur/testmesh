@@ -7,8 +7,8 @@ in vec3 inNormal;
 uniform mat4 m;
 uniform mat4 v;
 uniform mat4 p;
-uniform vec2 texPos;
-uniform vec2 texSize;
+uniform vec2 quadPos;
+uniform vec2 quadSize;
 
 out vec2 fragTexCoord;
 out vec3 fragPosition;
@@ -18,7 +18,7 @@ void main()
 {
 	//gl_Position = vec4(inPosition, 1.0);
 	gl_Position = p * v * m * vec4(inPosition, 1.0);
-	fragTexCoord = texPos + inTexCoord * texSize;
+	fragTexCoord = quadPos + inTexCoord * quadSize;
 	fragPosition = inPosition;
 	fragNormal = inNormal;
 }

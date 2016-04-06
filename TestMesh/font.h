@@ -4,6 +4,7 @@
 #include "texture.h"
 #include <freetype\ft2build.h>
 #include FT_FREETYPE_H
+#include FT_LCD_FILTER_H
 #include <string>
 #include <map>
 #include "glyphNode.h"
@@ -19,9 +20,11 @@ private:
     std::map<uint, glyph*> _glyphCache;
     FT_Face _fontFace;
     uint _size;
-    int _baseLine;
-    int _ascender;
-    int _lineHeight;
+    float _dpi;
+    float _horizontalScale;
+    float _baseLine;
+    float _ascender;
+    float _lineHeight;
     bool _hasKerning;
 
     std::map<glyph*, glyphNode*> _glyphAtlas;

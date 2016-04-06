@@ -5,14 +5,16 @@
 struct glyph
 {
     uint index;
-    int  width;
-    int  height;
-    int  horiBearingX;
-    int  horiBearingY;
-    int  horiAdvance;
-    int  vertBearingX;
-    int  vertBearingY;
-    int  vertAdvance;
+    float width;
+    float height;
+    float offsetX;
+    float offsetY;
+    float horiBearingX;
+    float horiBearingY;
+    float horiAdvance;
+    float vertBearingX;
+    float vertBearingY;
+    float vertAdvance;
     glm::vec2 texPos;
     glm::vec2 texSize;
 };

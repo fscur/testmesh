@@ -11,7 +11,7 @@ int main(int argc, char* args[])
 {
     application app;
 
-    auto mainScreen = new screen("TestMesh", 1024, 768);
+    auto mainScreen = new screen("TestMesh", 1600, 900);
     app.run(mainScreen);
     delete mainScreen;
 

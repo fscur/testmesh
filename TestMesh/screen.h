@@ -1,7 +1,6 @@
 #pragma once
 #include "types.h"
 #include "window.h"
-
 #include "font.h"
 #include "geometry.h"
 #include "shader.h"
@@ -18,7 +17,7 @@ private:
     glm::vec2 _lastMousePos; 
     glm::mat4 _projectionMatrix;
     glm::mat4 _viewMatrix;
-    glm::mat4 _modelMatrix;
+    glm::mat4 _modelMatrix; 
     shader* _shader;
     camera* _camera;
     geometry* _quad;
