@@ -30,4 +30,7 @@ public:
     fontManager(texturesManager* texturesManager);
     ~fontManager();
     glyph* getGlyph(font* font, const ulong& glyphChar);
+    GLuint getGlyphAtlasId() const { return _glyphAtlasId; }
+    GLint getGlyphAtlasSize() const { return _glyphAtlasSize; }
+    texture* getGlyphTexture() const { return _glyphAtlasTexture; }
 };

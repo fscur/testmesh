@@ -158,7 +158,6 @@
     <ClCompile Include="textureContainer.cpp" />
     <ClCompile Include="texturesManager.cpp" />
     <ClCompile Include="time.cpp" />
-    <ClCompile Include="vertex.cpp" />
     <ClCompile Include="vertexBuffer.cpp" />
     <ClCompile Include="window.cpp" />
     <ClCompile Include="window_win64.cpp" />

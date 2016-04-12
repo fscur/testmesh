@@ -7,8 +7,9 @@ FT_Library font::FreeTypeLibrary = nullptr;
 
 font::font(std::string name, uint size)
 {
+    _hinting = true;
     _size = size;
-    _horizontalScale = 100.0f;
+    _horizontalScale = 1.0f;
     _dpi = 96.0f;
 
     FT_New_Face(font::FreeTypeLibrary, name.c_str(), 0, &_fontFace);
@@ -43,17 +44,28 @@ glyph* font::getGlyph(const uint& glyphIndex)
         return _glyphCache[glyphIndex];
 
     FT_GlyphSlot glyphSlot = _fontFace->glyph;
-
+    float primary = 1.f;
+    float secondary = 0.0f;
+    float tertiary = 0.0f;
+    float norm = 1.0 / (primary + 2 * secondary + 2 * tertiary);
+    
     byte lcdWeights[5];
-    lcdWeights[0] = 0x10;
-    lcdWeights[1] = 0x40;
-    lcdWeights[2] = 0x70;
-    lcdWeights[3] = 0x40;
-    lcdWeights[4] = 0x10;
+    lcdWeights[0] = (byte)(tertiary * norm * 255);
+    lcdWeights[1] = (byte)(secondary * norm * 255);
+    lcdWeights[2] = (byte)(primary * norm * 255);
+    lcdWeights[3] = (byte)(secondary * norm * 255);
+    lcdWeights[4] = (byte)(tertiary * norm * 255);
 
     FT_Library_SetLcdFilter(font::FreeTypeLibrary, FT_LCD_FILTER_LIGHT);
     FT_Library_SetLcdFilterWeights(font::FreeTypeLibrary, lcdWeights);
-    FT_Load_Glyph(_fontFace, glyphIndex, FT_LOAD_RENDER | FT_LOAD_FORCE_AUTOHINT | FT_LOAD_TARGET_LCD);
+    int flags = FT_LOAD_RENDER | FT_LOAD_TARGET_LCD;
+
+    if (_hinting)
+        flags |= FT_LOAD_FORCE_AUTOHINT;
+    else
+        flags |= FT_LOAD_NO_AUTOHINT | FT_LOAD_NO_HINTING;
+
+    FT_Load_Glyph(_fontFace, glyphIndex, flags);
     
     auto buffer = glyphSlot->bitmap.buffer;
     auto w = glyphSlot->bitmap.width / 3;
@@ -91,7 +103,7 @@ glm::ivec2 font::getKerning(glyph* firstGlyph, glyph* secondGlyph)
             FT_KERNING_DEFAULT, 
             &kern);
 
-        return glm::ivec2(kern.x >> 6, kern.y >> 6);
+        return glm::ivec2((kern.x >> 6) / _horizontalScale, kern.y >> 6);
     }
 
     return glm::ivec2(0);

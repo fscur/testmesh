@@ -138,7 +138,7 @@ bool octree::insertIntoChildren(vertex vertex, unsigned int &index)
         }
     }*/
 
-    auto pos = vertex.GetPosition();
+    auto pos = vertex.position;
     
     pos -= _aabb.min;
 
@@ -165,7 +165,7 @@ void octree::subdivide()
         _children[i] = new octree(this, i, _maxItems);
 
     auto s = _positions.size();
-    for (auto i = 0; i < s; i++)
+    for (auto i = 0u; i < s; i++)
     {
         insertIntoChildren(_positions[i], _items[i]);
     }
@@ -177,7 +177,7 @@ void octree::subdivide()
 
 bool octree::insert(vertex vertex, unsigned int &index)
 {
-    auto pos = vertex.GetPosition();
+    auto pos = vertex.position;
 
     if (!_isSubdivided)
     {

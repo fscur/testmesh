@@ -1,124 +1,186 @@
 #include "geometry.h"
+#include <glm\glm.hpp>
+#include <iterator>
+
+geometry* geometry::_quad = nullptr;
 
 geometry::geometry()
 {
-    _vao = 0;
-
-    _verticesVbo = 0;
-    _texCoordsVbo = 0;
-    _normalsVbo = 0;
-    _indicesVbo = 0;
 }
 
 geometry::~geometry()
 {
-    glDeleteBuffers(1, &_verticesVbo);
-    glDeleteBuffers(1, &_texCoordsVbo);
-    glDeleteBuffers(1, &_normalsVbo);
-    glDeleteBuffers(1, &_indicesVbo);
-    glDeleteVertexArrays(1, &_vao);
+    delete[] vboData;
+    delete[] eboData;
 }
 
-geometry* geometry::create(std::vector<vertex> &vertices, std::vector<uint> &indices)
+geometry* geometry::create(std::vector<vertex> vertices, std::vector<uint> indices)
 {
-    auto g = new geometry();
-    g->addVertices(vertices, indices);
-    return g;
+    calcTangents(vertices, indices);
+
+    auto data = new geometry();
+    auto verticesCount = vertices.size();
+    auto indicesCount = indices.size();
+
+    data->verticesCount = (uint)verticesCount;
+    data->indicesCount = (uint)indicesCount;
+    data->vboSize = (uint)(verticesCount * sizeof(vertex));
+    data->eboSize = (uint)(data->indicesCount * sizeof(uint));
+
+    data->vboData = new vertex[verticesCount];
+    data->eboData = new uint[indicesCount];
+
+    memcpy(data->vboData, &vertices[0], data->vboSize);
+    memcpy(data->eboData, &indices[0], data->eboSize);
+
+    return data;
 }
 
-void geometry::addVertices(std::vector<vertex> &vertices, std::vector<uint> &indices)
+geometry* geometry::create(
+    uint verticesCount,
+    float* positionsBuffer,
+    float* texCoordsBuffer,
+    float* normalsBuffer,
+    uint indicesCount,
+    uint* indicesBuffer)
 {
-    _vertices = vertices;
-    _indices = indices;
+    std::vector<uint> indices(indicesBuffer, indicesBuffer + indicesCount);
+    std::vector<vertex> vertices;
 
-    GLuint verticesSize = vertices.size() * 3 * sizeof(GLfloat);
-    GLuint texCoordsSize = vertices.size() * 2 * sizeof(GLfloat);
-    GLuint normalsSize = vertices.size() * 3 * sizeof(GLfloat);
-    _indicesSize = indices.size() * sizeof(GLuint);
-
-    GLfloat* vertexBuffer = new GLfloat[vertices.size() * 3];
-    GLfloat* texCoordBuffer = new GLfloat[vertices.size() * 2];
-    GLfloat* normalBuffer = new GLfloat[vertices.size() * 3];
-
-    createBuffers(vertices, vertexBuffer, texCoordBuffer, normalBuffer);
-
-    glGenVertexArrays(1, &_vao);
-    glBindVertexArray(_vao);
-
-    glGenBuffers(1, &_verticesVbo);
-    glBindBuffer(GL_ARRAY_BUFFER, _verticesVbo);
-    glBufferData(GL_ARRAY_BUFFER, verticesSize, vertexBuffer, GL_STATIC_DRAW);
-
-    glGenBuffers(1, &_texCoordsVbo);
-    glBindBuffer(GL_ARRAY_BUFFER, _texCoordsVbo);
-    glBufferData(GL_ARRAY_BUFFER, texCoordsSize, texCoordBuffer, GL_STATIC_DRAW);
-
-    glGenBuffers(1, &_normalsVbo);
-    glBindBuffer(GL_ARRAY_BUFFER, _normalsVbo);
-    glBufferData(GL_ARRAY_BUFFER, normalsSize, normalBuffer, GL_STATIC_DRAW);
-
-    glGenBuffers(1, &_indicesVbo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indicesVbo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, _indicesSize, &indices[0], GL_STATIC_DRAW);
-
-    delete[] vertexBuffer;
-    delete[] texCoordBuffer;
-    delete[] normalBuffer;
-}
-
-void geometry::createBuffers(std::vector<vertex> &vertices,
-    GLfloat* &vertexBuffer,
-    GLfloat* &texCoordBuffer,
-    GLfloat* &normalBuffer)
-{
-    unsigned int vIndex = 0;
-    unsigned int tIndex = 0;
-    unsigned int nIndex = 0;
-
-    for (auto vertex : vertices)
+    for (uint i = 0; i < verticesCount; i++)
     {
-        GLfloat x = vertex.GetPosition().x;
-        GLfloat y = vertex.GetPosition().y;
-        GLfloat z = vertex.GetPosition().z;
+        auto x = positionsBuffer[i * 3 + 0];
+        auto y = positionsBuffer[i * 3 + 1];
+        auto z = positionsBuffer[i * 3 + 2];
 
-        GLfloat u = vertex.GetTexCoord().x;
-        GLfloat v = vertex.GetTexCoord().y;
+        auto position = glm::vec3(x, y, z);
 
-        GLfloat r0 = vertex.GetNormal().x;
-        GLfloat s0 = vertex.GetNormal().y;
-        GLfloat t0 = vertex.GetNormal().z;
+        auto u = texCoordsBuffer[i * 2 + 0];
+        auto v = texCoordsBuffer[i * 2 + 1];
 
-        vertexBuffer[vIndex++] = x;
-        vertexBuffer[vIndex++] = y;
-        vertexBuffer[vIndex++] = z;
+        auto texCoord = glm::vec2(u, v);
 
-        texCoordBuffer[tIndex++] = u;
-        texCoordBuffer[tIndex++] = v;
+        auto r = normalsBuffer[i * 3 + 0];
+        auto s = normalsBuffer[i * 3 + 1];
+        auto t = normalsBuffer[i * 3 + 2];
 
-        normalBuffer[nIndex++] = r0;
-        normalBuffer[nIndex++] = s0;
-        normalBuffer[nIndex++] = t0;
+        auto normal = glm::vec3(r, s, t);
+
+        vertices.push_back(vertex(position, texCoord, normal));
+    }
+
+    return geometry::create(vertices, indices);
+}
+
+void geometry::calcNormals(std::vector<vertex>& vertices, std::vector<uint>& indices)
+{
+    for (uint i = 0; i < indices.size(); i += 3)
+    {
+        auto i0 = indices[i + 0];
+        auto i1 = indices[i + 1];
+        auto i2 = indices[i + 2];
+
+        auto a = vertices[i0].position;
+        auto b = vertices[i1].position;
+        auto c = vertices[i2].position;
+
+        auto v0 = b - a;
+        auto v1 = c - a;
+
+        auto normal = glm::cross(v0, v1);
+        normal = glm::normalize(normal);
+
+        auto n0 = vertices[i0].normal;
+        auto n1 = vertices[i1].normal;
+        auto n2 = vertices[i2].normal;
+
+        vertices[i0].normal = n0 + normal;
+        vertices[i1].normal = n1 + normal;
+        vertices[i2].normal = n2 + normal;
+    }
+
+    for (uint i = 0; i < vertices.size(); i++)
+    {
+        auto normal = vertices[i].normal;
+        normal = normalize(normal);
+        vertices[i].normal = normal;
     }
 }
 
-void geometry::render()
+void geometry::calcTangents(std::vector<vertex>& vertices, std::vector<uint>& indices)
 {
-    glEnableVertexAttribArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, _verticesVbo);
-    glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    auto verticesCount = vertices.size();
+    auto indicesCount = indices.size();
 
-    glEnableVertexAttribArray(1);
-    glBindBuffer(GL_ARRAY_BUFFER, _texCoordsVbo);
-    glVertexAttribPointer((GLuint)1, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    auto bitangents = new glm::vec3[verticesCount];
 
-    glEnableVertexAttribArray(2);
-    glBindBuffer(GL_ARRAY_BUFFER, _normalsVbo);
-    glVertexAttribPointer((GLuint)2, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    for (uint i = 0; i < indicesCount; i += 3)
+    {
+        auto i0 = indices[i + 0];
+        auto i1 = indices[i + 1];
+        auto i2 = indices[i + 2];
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indicesVbo);
-    glDrawElements(GL_TRIANGLES, _indicesSize, GL_UNSIGNED_INT, 0);
+        auto p0 = vertices[i0].position;
+        auto p1 = vertices[i1].position;
+        auto p2 = vertices[i2].position;
 
-    glDisableVertexAttribArray(0);
-    glDisableVertexAttribArray(1);
-    glDisableVertexAttribArray(2);
+        auto v0 = p1 - p0;
+        auto v1 = p2 - p0;
+
+        auto tc0 = vertices[i0].texCoord;
+        auto tc1 = vertices[i1].texCoord;
+        auto tc2 = vertices[i2].texCoord;
+
+        auto uv0 = tc1 - tc0;
+        auto uv1 = tc2 - tc0;
+
+        float r = 1.0f / (uv0.x * uv1.y - uv0.y * uv1.x);
+        auto tangent = glm::normalize((v0 * uv1.y - v1 * uv0.y) * r);
+        auto bitangent = glm::normalize((v1 * uv0.x - v0 * uv1.x) * r);
+
+        vertices[i0].tangent = tangent;
+        vertices[i1].tangent = tangent;
+        vertices[i2].tangent = tangent;
+
+        bitangents[i0] = bitangent;
+        bitangents[i1] = bitangent;
+        bitangents[i2] = bitangent;
+    }
+
+    for (uint i = 0; i < verticesCount; i++)
+    {
+        auto n = vertices[i].normal;
+        auto t = vertices[i].tangent;
+        auto b = bitangents[i];
+
+        // Gram-Schmidt orthogonalize
+        t = glm::normalize(t - n * dot(n, t));
+
+        if (dot(cross(n, t), b) < 0.0f)
+            t = t * -1.0f;
+
+        vertices[i].tangent = t;
+    }
+
+    delete[] bitangents;
+}
+
+geometry* geometry::quad()
+{
+    if (_quad == nullptr)
+    {
+        std::vector<vertex> vertices
+        {
+            vertex(glm::vec3(-0.5f, -0.5f, 0.0f), glm::vec2(0.0f, 0.0f)),
+            vertex(glm::vec3(+0.5f, -0.5f, 0.0f), glm::vec2(1.0f, 0.0f)),
+            vertex(glm::vec3(+0.5f, +0.5f, 0.0f), glm::vec2(1.0f, 1.0f)),
+            vertex(glm::vec3(-0.5f, +0.5f, 0.0f), glm::vec2(0.0f, 1.0f)),
+        };
+
+        std::vector<uint> indices{ 0, 1, 2, 2, 3, 0 };
+
+        _quad = create(vertices, indices);
+    }
+
+    return _quad;
 }

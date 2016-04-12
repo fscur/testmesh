@@ -6,7 +6,7 @@
 #include "geometry.h"
 #include "shader.h"
 #include "camera.h"
-
+#include "vertexBuffer.h"
 #include <glm\glm.hpp>
 
 class screen :
@@ -24,9 +24,22 @@ private:
     geometry* _quad;
     texturesManager* _texturesManager;
     fontManager* _fontManager;
-    font* _font;
+    font* _font0;
+    font* _font1;
+    font* _font2;
+    font* _font3;
     std::map<uint, GLuint> _glyphTextures;
     float _aspect = (float)_width / (float)_height;
+
+    GLuint _vao;
+    vertexBuffer* _vbo;
+    vertexBuffer* _modelMatricesBuffer;
+    vertexBuffer* _glyphIdsBuffer;
+    buffer* _ebo;
+
+    std::vector<glm::mat4> _modelMatrices;
+    buffer* _glyphInfoBuffer;
+    std::vector<glyphInfo> _glyphInfos;
 
 private:
     void initGL();
@@ -34,6 +47,13 @@ private:
     void createQuad();
     void initShader();
     void initCamera();
+    void createVao();
+    void createVbo(void* data, GLsizeiptr size);
+    void createEbo(void* data, GLsizeiptr size); 
+    void createGlyphIdsBuffer(void* data, GLsizeiptr size);
+    void createModelMatricesBuffer(void* data, GLsizeiptr size);
+    void initText();
+    void addText(std::wstring text, glm::vec2 position, font* font);
 
 public:
     screen(std::string name, uint witdh, uint height);
