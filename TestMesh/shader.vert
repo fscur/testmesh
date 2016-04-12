@@ -30,7 +30,6 @@ layout (std140, binding = 0) buffer GlyphInfos
 
 out vec2 fragTexCoord;
 out vec3 fragPosition;
-out vec3 fragNormal;
 flat out float fragShift;
 
 void main()
@@ -39,6 +38,5 @@ void main()
     glyphInfo info = glyphs.items[inGlyphId];
 	fragTexCoord = info.pos + inTexCoord * info.size;
 	fragPosition = inPosition;
-	fragNormal = inNormal;
     fragShift = info.shift;
 }

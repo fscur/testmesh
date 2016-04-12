@@ -148,7 +148,7 @@ void screen::initText()
 
     _modelMatricesBuffer->data(sizeof(glm::mat4) * _modelMatrices.size(), &_modelMatrices[0], bufferDataUsage::dynamicDraw);
 
-    _glyphInfoBuffer = new buffer(bufferTarget::uniform);
+    _glyphInfoBuffer = new buffer(bufferTarget::shader);
     _glyphInfoBuffer->data(sizeof(glyphInfo) * glyphCount, &_glyphInfos[0], bufferDataUsage::dynamicDraw);
     _glyphInfoBuffer->bindBufferBase(0);
 }

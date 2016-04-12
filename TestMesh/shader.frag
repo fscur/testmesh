@@ -2,7 +2,6 @@
 
 in vec3 fragPosition;
 in vec2 fragTexCoord;
-in vec3 fragNormal;
 flat in float fragShift;
 
 uniform sampler2DArray glyphAtlas;
@@ -60,7 +59,8 @@ void main(void)
    color = t*color + (1.0-t)*vec4(r,g,b, min(min(r,g),b));
 
    fragColor = vec4(color.rgb, vcolor.a*color.a);
-   //fragColor = vec4(1.0);
+
+   //fragColor = vec4(fragTexCoord, 1.0, 1.0);
 
     //fragColor = fetch(fragTexCoord);
 }
