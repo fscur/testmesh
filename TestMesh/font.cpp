@@ -9,7 +9,7 @@ font::font(std::string name, uint size)
 {
     _hinting = true;
     _size = size;
-    _horizontalScale = 1.0f;
+    _horizontalScale = 64.0f;
     _dpi = 96.0f;
 
     FT_New_Face(font::FreeTypeLibrary, name.c_str(), 0, &_fontFace);

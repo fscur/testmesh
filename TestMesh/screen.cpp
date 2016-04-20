@@ -27,10 +27,10 @@ void screen::initFont()
 {
     _texturesManager = new texturesManager(false, false, 1);
     _fontManager = new fontManager(_texturesManager);
-    _font0 = new font("Consola.ttf", 24);
-    _font1 = new font("SegoeUI-Light.ttf", 24);
-    _font2 = new font("Roboto-Thin.ttf", 24);
-    _font3 = new font("Vera.ttf", 24);
+    _font0 = new font("Consola.ttf", 12);
+    _font1 = new font("SegoeUI-Light.ttf", 12);
+    _font2 = new font("Roboto-Thin.ttf", 12);
+    _font3 = new font("Vera.ttf", 12);
 }
 
 void screen::createVao()
@@ -115,7 +115,7 @@ void screen::initShader()
     _shader->addUniform("v", 0);
     _shader->addUniform("p", 1);
     _shader->addUniform("glyphAtlas", 2);
-    _shader->addUniform("texel", 3);
+    _shader->addUniform("texelSize", 3);
 }
 
 void screen::initCamera()
@@ -186,13 +186,13 @@ void screen::addText(std::wstring text, glm::vec2 position, font* font)
         auto h = (float)glyph->height;
         auto x0 = x + glyph->offsetX;
 
-        _modelMatrix = glm::mat4(
+        auto modelMatrix = glm::mat4(
             w, 0.0f, 0.0f, 0.0f,
             0.0f, h, 0.0f, 0.0f,
             0.0f, 0.0f, 1.0f, 0.0f,
             x0, -y - h + glyph->offsetY, 0.0f, 1.0f);
 
-        _modelMatrices.push_back(_modelMatrix);
+        _modelMatrices.push_back(modelMatrix);
 
         x += glyph->horiAdvance + kern.x;
         float shift = std::abs(x0 - ((int)x0));
@@ -201,7 +201,7 @@ void screen::addText(std::wstring text, glm::vec2 position, font* font)
         info.pos = glyph->texPos;
         info.size = glyph->texSize;
         info.shift = shift;
-
+        std::cout << std::to_string(shift) << std::endl;
         _glyphInfos.push_back(info);
         
         previousGlyph = glyph;
@@ -237,7 +237,7 @@ void screen::onRender()
 
 void screen::onTick()
 {
-    std::cout << "fps: " << application::framesPerSecond << std::endl;
+    //std::cout << "fps: " << application::framesPerSecond << std::endl;
 }
 
 void screen::onClosing()

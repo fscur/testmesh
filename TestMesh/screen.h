@@ -13,23 +13,22 @@ class screen :
     public window
 {
 private:
-    bool _isMouseDown;
-    glm::vec2 _mouseDownPos;
-    glm::vec2 _lastMousePos; 
     glm::mat4 _projectionMatrix;
     glm::mat4 _viewMatrix;
-    glm::mat4 _modelMatrix; 
-    shader* _shader;
     camera* _camera;
-    geometry* _quad;
+
     texturesManager* _texturesManager;
     fontManager* _fontManager;
     font* _font0;
     font* _font1;
     font* _font2;
     font* _font3;
+
     std::map<uint, GLuint> _glyphTextures;
     float _aspect = (float)_width / (float)_height;
+
+    shader* _shader;
+    geometry* _quad;
 
     GLuint _vao;
     vertexBuffer* _vbo;
