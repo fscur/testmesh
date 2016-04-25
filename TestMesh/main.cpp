@@ -76,8 +76,8 @@ std::vector<texture*> _normalTextures;
 
 uint _texturesCount = 2;
 uint _materialsCount = 100;
-uint _objectCount = 100;
-uint _instanceCount = 1000;
+uint _objectCount = 1;
+uint _instanceCount = 100000;
 uint _drawCount = _objectCount * _instanceCount;
 
 std::vector<vertex> _vertices;
@@ -152,14 +152,17 @@ extern "C" {
     _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
 
+int w = 800;
+int h = 800;
+
 bool createGLWindow()
 {
     _window = SDL_CreateWindow(
         "Testgeometry",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
-        1024,
-        768,
+        w,
+        h,
         SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
 
     if (_window == NULL)
@@ -340,9 +343,9 @@ void initShader()
 void initCamera()
 {
     _camera = new camera();
-    _camera->setPosition(glm::vec3(0.0f, 3.0f, 20.0f));
+    _camera->setPosition(glm::vec3(0.0f, 3.0f, 10.0f));
     _camera->setTarget(glm::vec3(0.0f));
-    _projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), 1024.0f / 768.0f, 0.1f, 100.0f);
+    _projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), (float)w / (float)h, 0.1f, 100.0f);
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
 }
 
@@ -521,6 +524,51 @@ void fillBuffers()
     }
 }
 
+GLuint _framebufferId;
+GLuint _rt0;
+
+void initFramebuffer()
+{
+    glGenTextures(1, &_rt0);
+    glBindTexture(GL_TEXTURE_2D, _rt0);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    //NULL means reserve texture memory, but texels are undefined
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
+
+    glCreateFramebuffers(1, &_framebufferId);
+    glBindFramebuffer(GL_FRAMEBUFFER, _framebufferId);
+    glNamedFramebufferTexture(
+        _framebufferId,
+        GL_COLOR_ATTACHMENT0,
+        _rt0,
+        0);
+
+    auto status = glCheckNamedFramebufferStatus(_framebufferId, GL_FRAMEBUFFER);
+
+    switch (status)
+    {
+    case GL_FRAMEBUFFER_COMPLETE:
+        std::cout <<"complete" << std::endl;
+        break;
+    case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+        std::cout << "incomplete attachment" << std::endl;
+        break;
+    case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+        std::cout << "incomplete draw buffer" << std::endl;
+        break;
+    case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS:
+        std::cout << "incomplete layer targets" << std::endl;
+        break;
+    default:
+        break;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 bool init()
 {
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -557,7 +605,7 @@ bool init()
     }
 
     initGL();
-
+    initFramebuffer();
     return true;
 }
 
@@ -686,6 +734,13 @@ void update()
 
 void render()
 {
+    // glViewport(200, 200, 600, 600);
+    glClearColor(0.0, 0.0, 1.0, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, _framebufferId);
+    //glViewport(400, 400, 200, 200);
+    glClearColor(1.0, 0.0, 1.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     _shader->getUniform(0).set(_projectionMatrix * _viewMatrix);
@@ -694,6 +749,12 @@ void render()
 
     _lastDrawRange = _drawRange;
     _drawRange = ++_drawRange % TRIPLE_BUFFER;
+
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, _framebufferId);
+    //glViewport(0, 0, 800, 800);
+
+    glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 }
 
 void lock()
@@ -717,8 +778,8 @@ void loop()
 
         update();
 
-        stopwatch::MeasureInMilliseconds([&]
-        {
+         stopwatch::MeasureInMilliseconds([&]
+           {
             render();
             lock();
             SDL_GL_SwapWindow(_window);
