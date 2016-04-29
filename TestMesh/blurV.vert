@@ -12,8 +12,8 @@ out vec3 fragNormal;
 
 void main()
 {
-	gl_Position = mvp * vec4(inPosition, 1.0);
-	fragTexCoord = inTexCoord;
-	fragPosition = inPosition;
-	fragNormal = inNormal;
+    gl_Position = mvp * vec4(inPosition, 1.0);
+    fragTexCoord = inTexCoord;
+    fragPosition = inPosition;
+    fragNormal = inNormal;
 }

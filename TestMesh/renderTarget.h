@@ -10,6 +10,7 @@ public:
     GLint h;
     textureAddress address;
     texture* tex;
+
 public:
     renderTarget(
         GLenum attachment,
@@ -24,6 +25,19 @@ public:
         tex(tex)
     {
     }
+
+	renderTarget(
+		GLenum attachment,
+		GLint w,
+		GLint h,
+		texture* tex) :
+		attachment(attachment),
+		w(w),
+		h(h),
+		address(textureAddress()),
+		tex(tex)
+	{
+	}
 
     ~renderTarget()
     {

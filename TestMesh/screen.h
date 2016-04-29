@@ -6,31 +6,59 @@
 #include "shader.h"
 #include "camera.h"
 
+#include "framebuffer.h"
 #include <glm\glm.hpp>
 
 class screen :
     public window
 {
 private:
-    bool _isMouseDown;
-    glm::vec2 _mouseDownPos;
-    glm::vec2 _lastMousePos; 
     glm::mat4 _projectionMatrix;
     glm::mat4 _viewMatrix;
-    glm::mat4 _modelMatrix; 
-    shader* _shader;
-    camera* _camera;
-    geometry* _geometry;
-    std::vector<glm::mat4> _modelMatrices;
-    font* _font;
-    std::map<uint, GLuint> _glyphTextures;
-    float _aspect = (float)_width / (float)_height;
+
+    glm::mat4 _screenModelMatrix;
+	glm::mat4 _uiModelMatrix;
+
+	camera* _camera;
+    
+	framebuffer* _defaultFramebuffer;
+	framebuffer* _screenFramebuffer;
+	framebuffer* _uiFramebuffer;
+	framebuffer* _blurHFramebuffer;
+	framebuffer* _blurVFramebuffer;
+
+	renderTarget* _screenRT;
+	renderTarget* _uiRT;
+	renderTarget* _blurHRT;
+	renderTarget* _blurVRT;
+
+    shader* _screenShader;
+	shader* _uiShader;
+	shader* _blurHShader;
+	shader* _blurVShader;
+
+    geometry* _screenQuad;
+	geometry* _uiQuad;
+	geometry* _blurQuad;
+
 
 private:
-    void createQuad();
-    void initShader();
-    void initCamera();
     void initGL();
+    void initCamera();
+    
+	void createScreenQuad();
+    void initScreenShader();
+	void initScreenFramebuffer();
+
+	void createUiQuad();
+	void initUiShader();
+	void initUiFramebuffer();
+
+	void createBlurQuad();
+	void initBlurHShader();
+	void initBlurVShader();
+	void initBlurHFramebuffer();
+	void initBlurVFramebuffer();
 
 public:
     screen(std::string name, uint witdh, uint height);

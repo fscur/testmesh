@@ -165,8 +165,14 @@
     <ClCompile Include="window_win64.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="glass.frag" />
+    <None Include="glass.vert" />
+    <None Include="blurH.frag" />
+    <None Include="blurH.vert" />
     <None Include="shader.frag" />
     <None Include="shader.vert" />
+    <None Include="blurV.frag" />
+    <None Include="blurV.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -226,5 +226,23 @@
     <None Include="shader.vert">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="glass.vert">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="glass.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="blurH.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="blurH.vert">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="blurV.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="blurV.vert">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
