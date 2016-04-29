@@ -1,6 +1,7 @@
 #pragma once
 #include <GL\glew.h>
 #include "types.h"
+#include <SDL\SDL.h>
 
 struct texture
 {
@@ -47,6 +48,65 @@ public:
     }
 
     ~texture() {}
+
+	texture* load(std::string fileName)
+	{
+		SDL_Surface* surface = IMG_Load(fileName.c_str());
+
+		SDL_InvertSurface(surface);
+
+		GLuint id, width, height;
+		glGenTextures(1, &id);
+
+		width = surface->w;
+		height = surface->h;
+
+		// "Bind" the newly created texture : all future texture functions will modify this texture
+		glBindTexture(GL_TEXTURE_2D, id);
+
+		GLuint format = 0;
+		switch (surface->format->BitsPerPixel)
+		{
+		case 24:
+			if (surface->format->Rmask == 255)
+				format = GL_RGB;
+			else
+				format = GL_BGR;
+			break;
+		case 32:
+			if (surface->format->Rmask == 255)
+				format = GL_RGBA;
+			else
+				format = GL_BGRA;
+			break;
+		default:
+			break;
+		}
+
+		// Give the image to OpenGL
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, format, GL_UNSIGNED_BYTE, surface->pixels);
+
+		// Give the image to OpenGL
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, format, GL_UNSIGNED_BYTE, surface->pixels);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		SDL_FreeSurface(surface);
+
+		auto t = new texture(id, width, height);
+		t->_textureType = GL_TEXTURE_2D;
+
+		GLuint64 handle = glGetTextureHandleARB(id);
+		glMakeTextureHandleResidentARB(handle);
+
+		t->_handle = handle;
+
+		return t;
+	}
 
 	void generate()
 	{
