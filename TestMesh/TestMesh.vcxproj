@@ -104,6 +104,7 @@
     <ClInclude Include="eventHandler.h" />
     <ClInclude Include="eventSender.h" />
     <ClInclude Include="font.h" />
+    <ClInclude Include="frameBuffer.h" />
     <ClInclude Include="geometry.h" />
     <ClInclude Include="glyph.h" />
     <ClInclude Include="glyphNode.h" />
@@ -119,6 +120,7 @@
     <ClInclude Include="octree.h" />
     <ClInclude Include="path.h" />
     <ClInclude Include="rectangle.h" />
+    <ClInclude Include="renderTarget.h" />
     <ClInclude Include="scancode.h" />
     <ClInclude Include="screen.h" />
     <ClInclude Include="shader.h" />
@@ -141,6 +143,7 @@
     <ClCompile Include="camera.cpp" />
     <ClCompile Include="console.cpp" />
     <ClCompile Include="font.cpp" />
+    <ClCompile Include="frameBuffer.cpp" />
     <ClCompile Include="geometry.cpp" />
     <ClCompile Include="glyphNode.cpp" />
     <ClCompile Include="guid.cpp" />
