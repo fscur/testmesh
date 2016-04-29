@@ -41,6 +41,7 @@ private:
 	geometry* _uiQuad;
 	geometry* _blurQuad;
 
+	texture* _screenTexture;
 
 private:
     void initGL();

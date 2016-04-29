@@ -4,10 +4,13 @@
 #include "aabb.h"
 #include <iostream> 
 #include <glm\gtc\matrix_transform.hpp>
+#include <SDL\SDL.h>
+#include <SDL\SDL_image.h>
 
 screen::screen(std::string name, uint width, uint height) :
 	window(name, width, height)
 {
+	SDL_Init(SDL_INIT_VIDEO);
 }
 
 void screen::initGL()
@@ -87,7 +90,9 @@ void screen::initScreenShader()
 
 	_screenShader->init();
 	_screenShader->addUniform("mvp", 0);
-	_blurVShader->addUniform("inputTexture", 1);
+	_screenShader->addUniform("inputTexture", 1);
+
+	_screenTexture = texture::load("0.jpg");
 }
 
 void screen::createUiQuad()
@@ -292,6 +297,7 @@ void screen::onRender()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     _screenShader->bind();
 	_screenShader->getUniform(0).set(_projectionMatrix * _viewMatrix * _screenModelMatrix);
+	_screenShader->getUniform(1).set(_screenTexture->id, 0);
     _screenQuad->render();
     _screenShader->unbind();
 
