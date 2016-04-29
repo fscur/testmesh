@@ -11,6 +11,7 @@ screen::screen(std::string name, uint width, uint height) :
 	window(name, width, height)
 {
 	SDL_Init(SDL_INIT_VIDEO);
+	IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_TIF);
 }
 
 void screen::initGL()

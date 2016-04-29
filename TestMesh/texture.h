@@ -85,7 +85,7 @@ public:
 			GL_RGBA,
 			format,
 			GL_UNSIGNED_BYTE,
-			nullptr,
+			static_cast<byte*>(surface->pixels),
 			GL_REPEAT,
 			GL_LINEAR_MIPMAP_LINEAR,
 			GL_LINEAR,
