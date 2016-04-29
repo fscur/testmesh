@@ -20,15 +20,16 @@ private:
     glm::mat4 _modelMatrix; 
     shader* _shader;
     camera* _camera;
-    geometry* _quad;
+    geometry* _geometry;
+    std::vector<mat4> _modelMatrices;
     font* _font;
     std::map<uint, GLuint> _glyphTextures;
     float _aspect = (float)_width / (float)_height;
 
 private:
-    void initGL();
-    void initFont();
-    void createQuad();
+    void createModelMatrices(uint n);
+    geometry* createCube();
+    void createCubes(uint n);
     void initShader();
     void initCamera();
 
