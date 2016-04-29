@@ -87,6 +87,7 @@ void screen::initScreenShader()
 
 	_screenShader->init();
 	_screenShader->addUniform("mvp", 0);
+	_blurVShader->addUniform("inputTexture", 1);
 }
 
 void screen::createUiQuad()
@@ -185,14 +186,13 @@ void screen::initBlurHFramebuffer()
 
 void screen::initBlurVShader()
 {
-	_uiShader = new shader("BlurV", "blurV.vert", "blurV.frag");
-	_uiShader->addAttribute("inPosition");
-	_uiShader->addAttribute("inTexCoord");
-	_uiShader->addAttribute("inNormal");
-	_uiShader->addAttribute("inModelMatrix");
-	_uiShader->init();
-	_uiShader->addUniform("mvp", 0);
-	_uiShader->addUniform("inputTexture", 1);
+	_blurVShader = new shader("BlurV", "blurV.vert", "blurV.frag");
+	_blurVShader->addAttribute("inPosition");
+	_blurVShader->addAttribute("inTexCoord");
+	_blurVShader->addAttribute("inNormal");
+	_blurVShader->addAttribute("inModelMatrix");
+	_blurVShader->init();
+	_blurVShader->addUniform("inputTexture", 0);
 }
 
 void screen::initBlurVFramebuffer()
@@ -286,8 +286,6 @@ void screen::onRender()
 //	_screenFramebuffer->unbind(GL_FRAMEBUFFER);
 //	_screenFramebuffer->blitToDefault(_screenRT);
 
-
-
 	_screenFramebuffer->bind(GL_FRAMEBUFFER);
 
 	glClearColor(1.0, 1.0, 1.0, 1.0);
@@ -306,6 +304,13 @@ void screen::onRender()
 	_blurQuad->render();
 	_blurHShader->unbind();
 	_blurHFramebuffer->unbind(GL_FRAMEBUFFER);
+
+	_blurVFramebuffer->bindForDrawing();
+	_blurVShader->bind();
+	_blurVShader->getUniform(0).set(_blurHRT->tex->id, 0);
+	_blurQuad->render();
+	_blurVShader->unbind();
+	_blurVFramebuffer->unbind(GL_FRAMEBUFFER);
 	//_blurHFramebuffer->blitToDefault(_blurHRT, 0, 0, 800, 450);
 
 
@@ -320,7 +325,7 @@ void screen::onRender()
 
 	_uiShader->bind();
 	_uiShader->getUniform(0).set(_projectionMatrix * _viewMatrix * _uiModelMatrix);
-	_uiShader->getUniform(1).set(_blurHRT->tex->id, 0);
+	_uiShader->getUniform(1).set(_blurVRT->tex->id, 0);
 	_blurQuad->render();
 	_uiShader->unbind();
 
