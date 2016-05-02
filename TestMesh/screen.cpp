@@ -34,7 +34,11 @@ void screen::createScreenQuad()
 	auto indices = std::vector<uint>{ 0, 1, 2, 2, 3, 0 };
 
 	_screenQuad = geometry::create(vertices, indices);
-	_screenModelMatrix = glm::mat4(1.0f);
+	_screenModelMatrix = glm::mat4(
+		2.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 2.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 void screen::createBlurQuad()
