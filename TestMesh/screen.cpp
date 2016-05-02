@@ -8,7 +8,8 @@
 #include <SDL\SDL_image.h>
 
 screen::screen(std::string name, uint width, uint height) :
-	window(name, width, height)
+	window(name, width, height),
+	_resolution(glm::vec2(_width, _height))
 {
 	SDL_Init(SDL_INIT_VIDEO);
 	IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_TIF);
@@ -164,6 +165,7 @@ void screen::initBlurHShader()
 	_blurHShader->addAttribute("inModelMatrix");
 	_blurHShader->init();
 	_blurHShader->addUniform("inputTexture", 0);
+	_blurHShader->addUniform("resolution", 1);
 }
 
 void screen::initBlurHFramebuffer()
@@ -203,6 +205,7 @@ void screen::initBlurVShader()
 	_blurVShader->addAttribute("inModelMatrix");
 	_blurVShader->init();
 	_blurVShader->addUniform("inputTexture", 0);
+	_blurVShader->addUniform("resolution", 1);
 }
 
 void screen::initBlurVFramebuffer()
@@ -238,7 +241,7 @@ void screen::initCamera()
 	_camera = new camera();
 	_camera->setPosition(glm::vec3(0.0f, 3.0f, 4.5f));
 	_camera->setTarget(glm::vec3(0.0f));
-	_projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), 1024.0f / 768.0f, 0.1f, 100.0f);
+	_projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), 1600.0f / 900.0f, 0.1f, 100.0f);
 	_viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
 }
 
@@ -312,6 +315,7 @@ void screen::onRender()
 	_blurHFramebuffer->bindForDrawing();
 	_blurHShader->bind();
 	_blurHShader->getUniform(0).set(_screenRT->tex->id, 0);
+	_blurHShader->getUniform(1).set(_resolution);
 	_blurQuad->render();
 	_blurHShader->unbind();
 	_blurHFramebuffer->unbind(GL_FRAMEBUFFER);
@@ -319,9 +323,30 @@ void screen::onRender()
 	_blurVFramebuffer->bindForDrawing();
 	_blurVShader->bind();
 	_blurVShader->getUniform(0).set(_blurHRT->tex->id, 0);
+	_blurVShader->getUniform(1).set(_resolution);
 	_blurQuad->render();
 	_blurVShader->unbind();
 	_blurVFramebuffer->unbind(GL_FRAMEBUFFER);
+
+	for (size_t i = 0; i < 2; i++)
+	{
+		_blurHFramebuffer->bindForDrawing();
+		_blurHShader->bind();
+		_blurHShader->getUniform(0).set(_blurVRT->tex->id, 0);
+		_blurHShader->getUniform(1).set(_resolution);
+		_blurQuad->render();
+		_blurHShader->unbind();
+		_blurHFramebuffer->unbind(GL_FRAMEBUFFER);
+
+		_blurVFramebuffer->bindForDrawing();
+		_blurVShader->bind();
+		_blurVShader->getUniform(0).set(_blurHRT->tex->id, 0);
+		_blurVShader->getUniform(1).set(_resolution);
+		_blurQuad->render();
+		_blurVShader->unbind();
+		_blurVFramebuffer->unbind(GL_FRAMEBUFFER);
+	}
+	
 	//_blurHFramebuffer->blitToDefault(_blurHRT, 0, 0, 800, 450);
 
 

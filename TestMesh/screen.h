@@ -13,6 +13,7 @@ class screen :
     public window
 {
 private:
+	glm::vec2 _resolution;
     glm::mat4 _projectionMatrix;
     glm::mat4 _viewMatrix;
 
