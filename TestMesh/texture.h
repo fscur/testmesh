@@ -30,7 +30,7 @@ public:
         GLenum dataFormat = GL_BGRA,
         GLenum dataType = GL_UNSIGNED_BYTE,
         byte* data = nullptr,
-        GLint wrapMode = GL_REPEAT,
+        GLint wrapMode = GL_CLAMP_TO_EDGE,
         GLint minFilter = GL_LINEAR_MIPMAP_LINEAR,
         GLint magFilter = GL_LINEAR,
         bool generateMipmaps = true) :
@@ -86,7 +86,7 @@ public:
 			format,
 			GL_UNSIGNED_BYTE,
 			static_cast<byte*>(surface->pixels),
-			GL_REPEAT,
+			GL_CLAMP_TO_EDGE,
 			GL_LINEAR_MIPMAP_LINEAR,
 			GL_LINEAR,
 			true);
@@ -94,7 +94,7 @@ public:
 		tex->generate();
 
 		SDL_FreeSurface(surface);
-		
+
 		return tex;
 	}
 

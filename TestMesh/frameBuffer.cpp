@@ -115,7 +115,7 @@ void framebuffer::unbind(GLenum target)
     glBindFramebuffer(target, 0);
 }
 
-void framebuffer::blitToDefault(renderTarget * renderTarget, int x, int y, int w, int h)
+void framebuffer::blitToDefault(renderTarget * renderTarget, GLint x, GLint y, GLint w, GLint h)
 {
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
@@ -127,7 +127,7 @@ void framebuffer::blitToDefault(renderTarget * renderTarget, int x, int y, int w
 	if (h == -1)
 		h = renderTarget->h;
 
-    glBlitFramebuffer(0, 0, renderTarget->w, renderTarget->h, x, y, w, h, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+    glBlitFramebuffer(0, 0, renderTarget->w, renderTarget->h, x, y, x + w, y + h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 }
 
 void framebuffer::blit(framebuffer * sourceFramebuffer, renderTarget * sourceRenderTarget, framebuffer * targetFramebuffer, renderTarget * targetRenderTarget)

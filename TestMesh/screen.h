@@ -17,39 +17,49 @@ private:
     glm::mat4 _projectionMatrix;
     glm::mat4 _viewMatrix;
 
-    glm::mat4 _screenModelMatrix;
+    glm::mat4 _sceneModelMatrix;
 	glm::mat4 _uiModelMatrix;
 
+	int _blur;
+
 	camera* _camera;
-    
-	framebuffer* _defaultFramebuffer;
+
+	framebuffer* _sceneFramebuffer;
 	framebuffer* _screenFramebuffer;
+	framebuffer* _defaultFramebuffer;
 	framebuffer* _uiFramebuffer;
 	framebuffer* _blurHFramebuffer;
 	framebuffer* _blurVFramebuffer;
 
+	renderTarget* _sceneRT;
 	renderTarget* _screenRT;
 	renderTarget* _uiRT;
 	renderTarget* _blurHRT;
 	renderTarget* _blurVRT;
 
+	shader* _sceneShader;
     shader* _screenShader;
 	shader* _uiShader;
 	shader* _blurHShader;
 	shader* _blurVShader;
 
+	geometry* _sceneQuad;
     geometry* _screenQuad;
 	geometry* _uiQuad;
 	geometry* _blurQuad;
 
-	texture* _screenTexture;
+	texture* _sceneTexture;
 
 private:
     void initGL();
     void initCamera();
     
+	void createSceneQuad();
+    void initSceneShader();
+	void initSceneFramebuffer();
+
 	void createScreenQuad();
-    void initScreenShader();
+	void initScreenShader();
 	void initScreenFramebuffer();
 
 	void createUiQuad();
@@ -61,6 +71,9 @@ private:
 	void initBlurVShader();
 	void initBlurHFramebuffer();
 	void initBlurVFramebuffer();
+
+	void renderBlur(renderTarget* renderTarget);
+	void renderUi();
 
 public:
     screen(std::string name, uint witdh, uint height);

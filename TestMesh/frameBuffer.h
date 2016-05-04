@@ -21,7 +21,7 @@ public:
     void bindForReading();
     void bindForReading(renderTarget* sourceRenderTarget);
     void unbind(GLenum target);
-    void blitToDefault(renderTarget* renderTarget, int x = 0, int y = 0, int w = -1, int h = -1);
+    void blitToDefault(renderTarget* renderTarget, GLint x = 0, GLint y = 0, GLint w = -1, GLint h = -1);
     void blit(
         framebuffer* sourceFramebuffer,
         renderTarget* sourceRenderTarget,

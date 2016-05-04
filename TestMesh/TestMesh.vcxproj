@@ -169,6 +169,8 @@
     <None Include="glass.vert" />
     <None Include="blurH.frag" />
     <None Include="blurH.vert" />
+    <None Include="screen.frag" />
+    <None Include="screen.vert" />
     <None Include="shader.frag" />
     <None Include="shader.vert" />
     <None Include="blurV.frag" />
