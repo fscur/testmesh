@@ -284,10 +284,10 @@ void initArrayTextures()
 {
     auto data = new texture*[5];
     data[0] = texture::fromFile("A.png");
-    data[1] = texture::fromFile("I.png");
-    data[2] = texture::fromFile("U.png");
-    data[3] = texture::fromFile("E.png");
-    data[4] = texture::fromFile("O.png");
+    data[1] = texture::fromFile("E.png");
+    data[2] = texture::fromFile("I.png");
+    data[3] = texture::fromFile("O.png");
+    data[4] = texture::fromFile("U.png");
 
     for (int i = 0; i < 5; i++)
     {
