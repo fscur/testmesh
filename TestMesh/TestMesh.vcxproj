@@ -105,6 +105,7 @@
     <ClInclude Include="eventSender.h" />
     <ClInclude Include="font.h" />
     <ClInclude Include="geometry.h" />
+    <ClInclude Include="glDebugger.h" />
     <ClInclude Include="glyph.h" />
     <ClInclude Include="glyphNode.h" />
     <ClInclude Include="guid.h" />
@@ -142,6 +143,7 @@
     <ClCompile Include="console.cpp" />
     <ClCompile Include="font.cpp" />
     <ClCompile Include="geometry.cpp" />
+    <ClCompile Include="glDebugger.cpp" />
     <ClCompile Include="glyphNode.cpp" />
     <ClCompile Include="guid.cpp" />
     <ClCompile Include="guid_win64.cpp" />

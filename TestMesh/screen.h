@@ -13,6 +13,9 @@ class screen :
 {
 private:
     bool _isMouseDown;
+    bool _isRotating;
+    float _smoothingFactor = 0.01f;
+
     glm::vec2 _mouseDownPos;
     glm::vec2 _lastMousePos; 
     glm::mat4 _projectionMatrix;
@@ -20,17 +23,13 @@ private:
     glm::mat4 _modelMatrix; 
     shader* _shader;
     camera* _camera;
-    geometry* _quad;
-    font* _font;
-    std::map<uint, GLuint> _glyphTextures;
+    geometry* _cube;
     float _aspect = (float)_width / (float)_height;
 
 private:
-    void initGL();
-    void initFont();
-    void createQuad();
-    void initShader();
     void initCamera();
+    void initCube();
+    void initShader();
 
 public:
     screen(std::string name, uint witdh, uint height);
@@ -41,4 +40,9 @@ public:
     void onUpdate() override;
     void onRender() override;
     void onTick() override;
+
+    virtual void onMouseDown(mouseEventArgs* eventArgs) override;
+    virtual void onMouseUp(mouseEventArgs* eventArgs) override;
+    virtual void onMouseMove(mouseEventArgs* eventArgs) override;
+    virtual void onMouseWheel(mouseEventArgs* eventArgs) override;
 };

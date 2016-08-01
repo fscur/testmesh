@@ -35,7 +35,8 @@ public:
 
     ~geometry();
     static geometry* create(std::vector<vertex> &vertices, std::vector<uint> &indices);
-    void render(); 
+    void render();
+    static geometry* createCube();
 };
 
 #endif

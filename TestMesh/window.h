@@ -32,5 +32,10 @@ public:
     virtual void onRender() = 0;
     virtual void onClosing() = 0;
 
+    virtual void onMouseDown(mouseEventArgs* eventArgs);
+    virtual void onMouseUp(mouseEventArgs* eventArgs);
+    virtual void onMouseMove(mouseEventArgs* eventArgs);
+    virtual void onMouseWheel(mouseEventArgs* eventArgs);
+
     virtual void onTick();
 };
