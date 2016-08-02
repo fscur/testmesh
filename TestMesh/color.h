@@ -11,12 +11,12 @@ public:
 
 public:
     color(float r = 0.0f, float g = 0.0f, float b = 0.0f, float a = 1.0f)
-	{
-		R = r < 0.0f ? 0.0f : r > 1.0f ? 1.0f : r;
-		G = g < 0.0f ? 0.0f : g > 1.0f ? 1.0f : g;
-		B = b < 0.0f ? 0.0f : b > 1.0f ? 1.0f : b;
-		A = a < 0.0f ? 0.0f : a > 1.0f ? 1.0f : a;
-	}
+    {
+        R = r < 0.0f ? 0.0f : r > 1.0f ? 1.0f : r;
+        G = g < 0.0f ? 0.0f : g > 1.0f ? 1.0f : g;
+        B = b < 0.0f ? 0.0f : b > 1.0f ? 1.0f : b;
+        A = a < 0.0f ? 0.0f : a > 1.0f ? 1.0f : a;
+    }
 
     static color fromRGBA(long rgba)
     {

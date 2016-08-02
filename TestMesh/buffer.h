@@ -1,5 +1,8 @@
 #pragma once
-#include <gl\glew.h>
+
+#include <GL\glew.h>
+
+#include <string>
 
 namespace bufferTarget
 {
@@ -52,17 +55,55 @@ inline bufferStorageUsage::bufferStorageUsage operator|(bufferStorageUsage::buff
 class buffer
 {
 protected:
-    GLuint id;
-    bufferTarget::bufferTarget target;
+    const std::string _name;
+    GLuint _id;
+    const bufferTarget::bufferTarget _target;
 
 public:
-    buffer(bufferTarget::bufferTarget  target);
-    virtual ~buffer();
+    buffer(const std::string& name, const bufferTarget::bufferTarget target) :
+        _name(name),
+        _id(-1),
+        _target(target)
+    {
+        glCreateBuffers(1, &_id);
+        bind();
+    }
 
-    void bind();
-    void unbind();
-    void bindBufferBase(GLuint location);
-    void storage(GLsizeiptr size, void* data, bufferStorageUsage::bufferStorageUsage usage);
-    void data(GLsizeiptr size, void* data, bufferDataUsage::bufferDataUsage usage);
-    void subData(GLintptr offset, GLintptr size, void* data);
+    virtual ~buffer()
+    {
+        glDeleteBuffers(1, &_id);
+    }
+
+    void bind()
+    {
+        glBindBuffer(_target, _id);
+    }
+
+    void unbind()
+    {
+        glBindBuffer(_target, 0);
+    }
+
+    void bindBufferBase(GLuint location)
+    {
+        glBindBufferBase(_target, location, _id);
+    }
+
+    void storage(GLsizeiptr size, const void* const data, bufferStorageUsage::bufferStorageUsage usage)
+    {
+        glNamedBufferStorage(_id, size, data == nullptr ? NULL : data, usage);
+    }
+
+    void data(GLsizeiptr size, const void* const data, bufferDataUsage::bufferDataUsage usage)
+    {
+        glNamedBufferData(_id, size, data == nullptr ? NULL : data, usage);
+    }
+
+    void subData(GLintptr offset, GLintptr size, const void* const data)
+    {
+        glNamedBufferSubData(_id, offset, size, data);
+    }
+
+    bufferTarget::bufferTarget getTarget() const { return _target; }
+    std::string getName() const { return _name; }
 };

@@ -1,7 +1,9 @@
 ﻿#include "screen.h"
 #include "application.h"
 
+#include "programBuilder.h"
 #include "glDebugger.h"
+#include "importer.h"
 
 #include <glm\gtc\type_ptr.hpp>
 #include <glm\gtc\matrix_transform.hpp>
@@ -32,29 +34,31 @@ void screen::initCamera()
         0.0f, 0.0f, 0.0f, 1.0f);
 }
 
-void screen::initCube()
+void screen::initScene()
 {
-    _cube = geometry::createCube();
-    _modelMatrix = glm::mat4();
+    auto vertexShaderName = "shader.vert";
+    auto fragmentShaderName = "shader.frag";
+
+    _program = programBuilder::buildProgram(vertexShaderName, fragmentShaderName);
+
+    auto technique = new shadingTechnique(_program);
+    auto cubeMesh = new mesh(geometry::createCube(), technique);
+
+    _scene = new scene();
+    _scene->add(cubeMesh);
 }
 
-void screen::initShader()
+void screen::importGltf()
 {
-    _shader = new shader("shader", "shader.vert", "shader.frag");
-    _shader->addAttribute("inPosition");
-
-    _shader->init();
-    _shader->addUniform("model", 0);
-    _shader->addUniform("view", 1);
-    _shader->addUniform("projection", 2);
+    importer::import(R"(C:\Users\Patrick\Workspaces\glTF\sampleModels\Box\glTF\Box.gltf)");
 }
 
 void screen::onInit()
 {
     glDebugger::enable();
+    initScene();
     initCamera();
-    initCube();
-    initShader();
+    //importGltf();
 }
 
 void screen::onUpdate()
@@ -66,15 +70,15 @@ void screen::onRender()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    _shader->bind();
+    _program->bind();
 
-    _shader->getUniform(0).set(_modelMatrix);
-    _shader->getUniform(1).set(_viewMatrix);
-    _shader->getUniform(2).set(_projectionMatrix);
+    _program->setUniform(0, _modelMatrix);
+    _program->setUniform(1, _viewMatrix);
+    _program->setUniform(2, _projectionMatrix);
 
-    _cube->render();
+    _scene->render();
 
-    _shader->unbind();
+    _program->unbind();
 }
 
 void screen::onTick()
@@ -131,7 +135,6 @@ void screen::onMouseWheel(mouseEventArgs * eventArgs)
 
 void screen::onClosing()
 {
-    delete _shader;
-    delete _cube;
     delete _camera;
+    delete _scene;
 }

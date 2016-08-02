@@ -1,10 +1,11 @@
 #pragma once
 #include "types.h"
 #include "window.h"
-#include "font.h"
 #include "geometry.h"
 #include "shader.h"
 #include "camera.h"
+#include "scene.h"
+#include "program.h"
 
 #include <glm\glm.hpp>
 
@@ -21,15 +22,15 @@ private:
     glm::mat4 _projectionMatrix;
     glm::mat4 _viewMatrix;
     glm::mat4 _modelMatrix; 
-    shader* _shader;
     camera* _camera;
-    geometry* _cube;
+    scene* _scene;
+    program* _program;
     float _aspect = (float)_width / (float)_height;
 
 private:
     void initCamera();
-    void initCube();
-    void initShader();
+    void initScene();
+    void importGltf();
 
 public:
     screen(std::string name, uint witdh, uint height);
