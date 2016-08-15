@@ -44,6 +44,7 @@ void program::addAttribute(const std::string& attribute)
 void program::addUniform(uint location, std::string name)
 {
     _uniformsNames[location] = name;
+    _uniformsLocations[name] = location;
 }
 
 void program::setUniform(uint location, GLuint value)
@@ -109,6 +110,24 @@ void program::setUniform(uint location, std::vector<GLint> value)
 void program::setUniform(uint location, std::vector<GLuint64> value)
 {
     glUniformHandleui64vARB(location, static_cast<GLsizei>(value.size()), value.data());
+}
+
+void program::setUniform(std::string name, GLuint value)
+{
+    int location = glGetUniformLocation(_id, name.c_str());
+    glUniform1i(location, value);
+}
+
+void program::setUniform(std::string name, glm::mat4 value)
+{
+    int location = glGetUniformLocation(_id, name.c_str());
+    glUniformMatrix4fv(location, 1, GL_FALSE, &value[0][0]);
+}
+
+void program::setUniform(std::string name, glm::vec4 value)
+{
+    int location = glGetUniformLocation(_id, name.c_str());
+    glUniform4f(location, value.x, value.y, value.z, value.w);
 }
 
 void program::link()

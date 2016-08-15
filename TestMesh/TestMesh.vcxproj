@@ -154,6 +154,7 @@
     <ClCompile Include="importer.cpp" />
     <ClCompile Include="input.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="material.cpp" />
     <ClCompile Include="mathUtils.cpp" />
     <ClCompile Include="mesh.cpp" />
     <ClCompile Include="octree.cpp" />

@@ -1,6 +1,6 @@
 #version 450
 
-in vec3 inPosition;
+attribute in vec3 inPosition;
 
 layout (location = 0) uniform mat4 model;
 layout (location = 1) uniform mat4 view;

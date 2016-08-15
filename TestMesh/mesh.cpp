@@ -1,14 +1,16 @@
 #include "mesh.h"
 
-mesh::mesh(geometry* geometry, shadingTechnique* technique) :
+mesh::mesh(geometry* geometry, material* material) :
     _geometry(geometry),
-    _technique(technique),
+    _material(material),
     _modelMatrix(glm::mat4())
 {
 }
 
 mesh::~mesh()
 {
+    delete _material;
+    delete _geometry;
 }
 
 void mesh::render() const

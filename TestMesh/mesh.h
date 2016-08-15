@@ -1,16 +1,16 @@
 #pragma once
 #include "geometry.h"
-#include "shadingTechnique.h"
+#include "material.h"
 
 class mesh
 {
 private:
     geometry* _geometry;
-    shadingTechnique* _technique;
+    material* _material;
     glm::mat4 _modelMatrix;
 
 public:
-    mesh(geometry* geometry, shadingTechnique* technique);
+    mesh(geometry* geometry, material* material);
     ~mesh();
 
     void render() const;

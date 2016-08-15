@@ -1,6 +1,7 @@
 ﻿#include "screen.h"
 #include "application.h"
 
+#include "material.h"
 #include "programBuilder.h"
 #include "glDebugger.h"
 #include "importer.h"
@@ -19,12 +20,17 @@ screen::~screen()
 {
 }
 
+void screen::initDefaultResources()
+{
+    material::default = importer::importDefaultMaterial(R"(C:\Users\Patrick\Desktop\default_material.gltf)");
+}
+
 void screen::initCamera()
 {
     _camera = new camera();
     _camera->setPosition(glm::vec3(0.0f, 3.0f, 5.0f));
     _camera->setTarget(glm::vec3(0.0f));
-    _projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), 1024.0f / 768.0f, 0.1f, 100.0f);
+    _projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), _aspect, 0.1f, 100.0f);
     _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
 
     _modelMatrix = glm::mat4(
@@ -36,29 +42,26 @@ void screen::initCamera()
 
 void screen::initScene()
 {
-    auto vertexShaderName = "shader.vert";
-    auto fragmentShaderName = "shader.frag";
-
-    _program = programBuilder::buildProgram(vertexShaderName, fragmentShaderName);
-
-    auto technique = new shadingTechnique(_program);
-    auto cubeMesh = new mesh(geometry::createCube(), technique);
+    _material = material::default;
+    _cube = new mesh(geometry::createCube(), nullptr);
 
     _scene = new scene();
-    _scene->add(cubeMesh);
+    //_scene->add(cube);
+
+    _program = programBuilder::buildProgram("shader.vert", "shader.frag");
 }
 
 void screen::importGltf()
 {
-    importer::import(R"(C:\Users\Patrick\Workspaces\glTF\sampleModels\Box\glTF\Box.gltf)");
+    importer::importScene(R"(C:\Users\Patrick\Workspaces\glTF\sampleModels\Box\glTF\Box.gltf)");
 }
 
 void screen::onInit()
 {
     glDebugger::enable();
+    initDefaultResources();
     initScene();
     initCamera();
-    //importGltf();
 }
 
 void screen::onUpdate()
@@ -70,19 +73,33 @@ void screen::onRender()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    _program->bind();
+    //a_position
+    //modelViewMatrix
+    //projectionMatrix
 
-    _program->setUniform(0, _modelMatrix);
-    _program->setUniform(1, _viewMatrix);
-    _program->setUniform(2, _projectionMatrix);
+    _material->setMat4Semantic(parameterSemantic::MODELVIEW, _viewMatrix *  _modelMatrix);
+    _material->setMat4Semantic(parameterSemantic::PROJECTION, _projectionMatrix);
 
-    _scene->render();
+    _material->bind();
 
-    _program->unbind();
+    _cube->render();
+
+    _material->unbind();
+
+    //_program->bind();
+
+    //_program->setUniform(0, _modelMatrix);
+    //_program->setUniform(1, _viewMatrix);
+    //_program->setUniform(2, _projectionMatrix);
+
+    //cube->render();
+
+    //_program->unbind();
 }
 
 void screen::onTick()
 {
+    std::cout << "Fps: " << application::framesPerSecond << std::endl;
 }
 
 void screen::onMouseDown(mouseEventArgs* eventArgs)

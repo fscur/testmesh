@@ -1,32 +1,32 @@
-#ifndef _MATERIAL_H_
-#define _MATERIAL_H_
+#pragma once
+#include "program.h"
+#include "shadingTechnique.h"
 
-#include "color.h"
-#include "texture.h"
+#include <glm\glm.hpp>
 
-struct material
+#include <string>
+
+class material
 {
 private:
-    color _diffuseColor;
-    color _specularColor;
-    texture* _diffuseTexture;
-    texture* _normalTexture;
+    std::string _name;
+    std::map<std::string, glm::vec4> _vec4Values;
+
+    std::unordered_map<parameterSemantic, glm::mat4> _mat4Semantics;
+
+    shadingTechnique* _technique;
 
 public:
-    material(color diffuseColor, color specularColor, texture * diffuseTexture, texture * normalTexture) :
-        _diffuseColor(diffuseColor), 
-        _specularColor(specularColor), 
-        _diffuseTexture(diffuseTexture), 
-        _normalTexture(normalTexture)
-    {
-    }
+    static material* default;
 
-    ~material() {}
+public:
+    material(std::string name);
+    ~material();
 
-    inline color getDiffuseColor() const { return _diffuseColor; }
-    inline color getSpecularColor() const { return _specularColor; }
-    inline texture* getDiffuseTexture() const { return _diffuseTexture; }
-    inline texture* getNormalTexture() const { return _normalTexture; }
+    void add(shadingTechnique* technique);
+    void addValue(std::string name, glm::vec4 value);
+    void setMat4Semantic(parameterSemantic semantic, glm::mat4 value);
+    void bind();
+    void unbind();
 };
 
-#endif

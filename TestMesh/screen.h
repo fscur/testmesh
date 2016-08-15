@@ -27,7 +27,11 @@ private:
     program* _program;
     float _aspect = (float)_width / (float)_height;
 
+    mesh* _cube;
+    material* _material;
+
 private:
+    void initDefaultResources();
     void initCamera();
     void initScene();
     void importGltf();

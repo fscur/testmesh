@@ -25,6 +25,7 @@ private:
 
     std::map<unsigned int, GLuint> _uniforms;
     std::map<unsigned int, std::string> _uniformsNames;
+    std::map<std::string, unsigned int> _uniformsLocations;
     std::vector<std::string> _attributes;
     std::unordered_map<GLuint, buffer*> _buffers;
 
@@ -54,6 +55,20 @@ public:
     void setUniform(uint location, GLuint64 value);
     void setUniform(uint location, std::vector<GLint> value);
     void setUniform(uint location, std::vector<GLuint64> value);
+
+    void setUniform(std::string name, GLuint value);
+    void setUniform(std::string name, GLfloat value);
+    void setUniform(std::string name, color value);
+    void setUniform(std::string name, glm::mat3 value);
+    void setUniform(std::string name, glm::mat4 value);
+    void setUniform(std::string name, glm::vec2 value);
+    void setUniform(std::string name, glm::vec3 value);
+    void setUniform(std::string name, glm::vec4 value);
+    void setUniform(std::string name, bool value);
+    void setUniform(std::string name, int value);
+    void setUniform(std::string name, GLuint64 value);
+    void setUniform(std::string name, std::vector<GLint> value);
+    void setUniform(std::string name, std::vector<GLuint64> value);
 
     void link();
     void bind();
