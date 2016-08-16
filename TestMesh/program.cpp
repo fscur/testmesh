@@ -118,10 +118,22 @@ void program::setUniform(std::string name, GLuint value)
     glUniform1i(location, value);
 }
 
+void program::setUniform(std::string name, glm::mat3 value)
+{
+    int location = glGetUniformLocation(_id, name.c_str());
+    glUniformMatrix3fv(location, 1, GL_FALSE, &value[0][0]);
+}
+
 void program::setUniform(std::string name, glm::mat4 value)
 {
     int location = glGetUniformLocation(_id, name.c_str());
     glUniformMatrix4fv(location, 1, GL_FALSE, &value[0][0]);
+}
+
+void program::setUniform(std::string name, glm::vec3 value)
+{
+    int location = glGetUniformLocation(_id, name.c_str());
+    glUniform3f(location, value.x, value.y, value.z);
 }
 
 void program::setUniform(std::string name, glm::vec4 value)

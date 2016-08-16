@@ -45,28 +45,31 @@ material* importer::importDefaultMaterial(std::string path)
     auto vertName = directory + "\\defaultVert.vert";
     auto fragName = directory + "\\defaultFrag.frag";
 
-    auto program0 = programBuilder::buildProgram(vertName, fragName);
+    auto program = programBuilder::buildProgram(vertName, fragName);
 
-    auto technique = new shadingTechnique();
+    std::vector<techniqueUniform> uniforms =
+    {
+        techniqueUniform("modelViewMatrix", "u_modelViewMatrix"),
+        techniqueUniform("projectionMatrix", "u_projectionMatrix"),
+        techniqueUniform("emission", "u_emission")
+    };
 
-    technique->addAttribute("a_position", "position");
+    std::vector<techniqueAttribute> attributes =
+    {
+        techniqueAttribute("position", "a_position")
+    };
+
+    std::vector<long> enabledStates = { 2884, 2929 };
+
+    auto technique = new shadingTechnique(uniforms, attributes, enabledStates, program);
 
     technique->addParameter("modelViewMatrix", new techniqueParameter(35676, parameterSemantic::MODELVIEW));
     technique->addParameter("projectionMatrix", new techniqueParameter(35676, parameterSemantic::PROJECTION));
     technique->addParameter("emission", new techniqueParameter(35666));
     technique->addParameter("position", new techniqueParameter(35665, parameterSemantic::POSITION));
 
-    technique->addProgram(program0);
-
-    technique->addEnabledState(2884);
-    technique->addEnabledState(2929);
-
-    technique->addUniform("modelViewMatrix", "u_modelViewMatrix");
-    technique->addUniform("projectionMatrix", "u_projectionMatrix");
-    technique->addUniform("emission", "u_emission");
-
-    auto mat = new material("Effect1");
+    auto mat = new material("Effect1", technique);
     mat->addValue("emission", glm::vec4(0.8f, 0.8f, 0.8f, 1.0f));
-    mat->add(technique);
+
     return mat;
 }

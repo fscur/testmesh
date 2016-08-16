@@ -73,28 +73,14 @@ void screen::onRender()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    //a_position
-    //modelViewMatrix
-    //projectionMatrix
-
-    _material->setMat4Semantic(parameterSemantic::MODELVIEW, _viewMatrix *  _modelMatrix);
-    _material->setMat4Semantic(parameterSemantic::PROJECTION, _projectionMatrix);
+    _material->bindSemantic(parameterSemantic::MODELVIEW, _viewMatrix *  _modelMatrix);
+    _material->bindSemantic(parameterSemantic::PROJECTION, _projectionMatrix);
 
     _material->bind();
 
     _cube->render();
 
     _material->unbind();
-
-    //_program->bind();
-
-    //_program->setUniform(0, _modelMatrix);
-    //_program->setUniform(1, _viewMatrix);
-    //_program->setUniform(2, _projectionMatrix);
-
-    //cube->render();
-
-    //_program->unbind();
 }
 
 void screen::onTick()
