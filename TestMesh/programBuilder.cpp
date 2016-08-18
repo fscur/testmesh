@@ -7,7 +7,7 @@
 
 using namespace std;
 
-program* programBuilder::buildProgram(
+program* programBuilder::buildProgramFromFile(
     const string& vertexShaderName,
     const string& fragmentShaderName)
 {
@@ -23,7 +23,7 @@ program* programBuilder::buildProgram(
     return prog;
 }
 
-program* programBuilder::buildProgram(
+program* programBuilder::buildProgramFromSource(
     const char* vertexSource,
     const char* fragmentSource)
 {

@@ -123,7 +123,7 @@ program* programFromGltf(std::string programName, tinygltf::Scene* scene)
     vertexSource.push_back('\0');
     fragmentSource.push_back('\0');
 
-    return programBuilder::buildProgram((char*)(&vertexSource[0]), (char*)(&fragmentSource[0]));
+    return programBuilder::buildProgramFromSource((char*)(&vertexSource[0]), (char*)(&fragmentSource[0]));
 }
 
 parameterSemantic semanticFromString(std::string semantic)
@@ -207,13 +207,12 @@ scene* importer::importScene(std::string path)
     return s;
 }
 
-material* importer::importDefaultMaterial(std::string path)
+material* importer::importDefaultMaterial()
 {
-    auto directory = path::getDirectoryFullName(path);
-    auto vertName = directory + "\\defaultVert.vert";
-    auto fragName = directory + "\\defaultFrag.frag";
+    auto vertName = "../TestMesh/defaultVert.vert";
+    auto fragName = "../TestMesh/defaultFrag.frag";
 
-    auto program = programBuilder::buildProgram(vertName, fragName);
+    auto program = programBuilder::buildProgramFromFile(vertName, fragName);
 
     std::vector<techniqueUniform> uniforms =
     {

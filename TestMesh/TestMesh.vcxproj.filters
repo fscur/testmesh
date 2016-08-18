@@ -268,5 +268,11 @@
     <None Include="shader.vert">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="defaultFrag.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="defaultVert.vert">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

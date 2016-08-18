@@ -6,9 +6,9 @@
 class programBuilder
 {
 public:
-    static program* buildProgram(
+    static program* buildProgramFromFile(
         const std::string& vertexShaderName,
         const std::string& fragmentShaderName);
 
-    static program * buildProgram(const char * vertexSource, const char * fragmentSource);
+    static program * buildProgramFromSource(const char * vertexSource, const char * fragmentSource);
 };

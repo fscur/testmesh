@@ -18,7 +18,7 @@ screen::~screen()
 
 void screen::initDefaultResources()
 {
-    material::default = importer::importDefaultMaterial(R"(C:\Users\Patrick\Desktop\default_material.gltf)");
+    material::default = importer::importDefaultMaterial();
 }
 
 void screen::initCamera()
@@ -37,7 +37,7 @@ void screen::initScene()
 
 void screen::importGltf()
 {
-    _scene = importer::importScene(R"(C:\Users\Patrick\Workspaces\glTF\sampleModels\Box\glTF\Box.gltf)");
+    _scene = importer::importScene(R"(..\glTF\sampleModels\Box\glTF\Box.gltf)");
     _camera = _scene->getCamera();
 }
 
