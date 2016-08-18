@@ -22,3 +22,19 @@ program* programBuilder::buildProgram(
 
     return prog;
 }
+
+program* programBuilder::buildProgram(
+    const char* vertexSource,
+    const char* fragmentSource)
+{
+    auto vertexShader = new shader(vertexSource, shaderStage::vertex);
+    auto fragmentShader = new shader(fragmentSource, shaderStage::fragment);
+
+    auto prog = new program();
+    prog->addShader(vertexShader);
+    prog->addShader(fragmentShader);
+    prog->compile();
+    prog->link();
+
+    return prog;
+}

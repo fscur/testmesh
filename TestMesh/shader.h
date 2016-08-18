@@ -25,6 +25,7 @@ private:
     GLuint _id;
     std::string _content;
     std::string _fileName;
+    const char* _source;
 
 private:
     shaderStage::shaderStage getStage(const std::string& fileName);
@@ -36,8 +37,10 @@ public:
     static constexpr const char* FRAG_EXT = ".frag";
 
 public:
-    shader(const std::string& fileName);
+    shader(const std::string& fileName); 
+    shader(const char* source, shaderStage::shaderStage stage);
     ~shader();
+    void create();
     shaderCompilationResult compile();
 
     shaderStage::shaderStage getStage() const { return _stage; }

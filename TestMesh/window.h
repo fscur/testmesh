@@ -6,11 +6,11 @@ class window
 {
 protected:
     std::string _name;
-    uint _width;
-    uint _height;
 
 public:
     bool closed;
+    static uint _width;
+    static uint _height;
 
 private:
     void adjustWindowToScreenBounds();

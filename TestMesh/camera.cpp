@@ -1,8 +1,12 @@
 #include "camera.h"
 #include "mathUtils.h"
 
+#include <glm\gtc\type_ptr.hpp>
+#include <glm\gtc\matrix_transform.hpp>
 
-camera::camera()
+camera::camera(float width, float height) :
+    _width(width),
+    _height(height)
 {
     _right = glm::vec3(1.0f, 0.0f, 0.0f);
     _up = glm::vec3(0.0f, 1.0f, 0.0f);
@@ -39,6 +43,15 @@ void camera::update()
     _direction = normalize(_direction);
 }
 
+glm::mat4 camera::getProjection()
+{
+    return glm::perspective<float>(glm::half_pi<float>(), _width / _height, 0.1f, 100.0f);
+}
+
+glm::mat4 camera::getView()
+{
+    return glm::lookAt<float>(_position, _target, _up);
+}
 
 void camera::translate(glm::vec3 translation)
 {
@@ -48,8 +61,8 @@ void camera::translate(glm::vec3 translation)
 void camera::orbit(glm::vec3 origin, glm::vec3 axis, float angle)
 {
     _position = mathUtils::rotateAboutAxis(_position, origin, axis, angle);
-	_direction = _target - _position;
-	update();
+    _direction = _target - _position;
+    update();
 }
 
 void camera::dolly(float amount)

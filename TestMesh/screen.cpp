@@ -5,10 +5,6 @@
 #include "programBuilder.h"
 #include "glDebugger.h"
 #include "importer.h"
-
-#include <glm\gtc\type_ptr.hpp>
-#include <glm\gtc\matrix_transform.hpp>
-
 #include <iostream>
 
 screen::screen(std::string name, uint width, uint height) :
@@ -27,60 +23,41 @@ void screen::initDefaultResources()
 
 void screen::initCamera()
 {
-    _camera = new camera();
-    _camera->setPosition(glm::vec3(0.0f, 3.0f, 5.0f));
-    _camera->setTarget(glm::vec3(0.0f));
-    _projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), _aspect, 0.1f, 100.0f);
-    _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
-
-    _modelMatrix = glm::mat4(
-        1.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 void screen::initScene()
 {
-    _material = material::default;
-    _cube = new mesh(geometry::createCube(), nullptr);
+    auto cube = new mesh(geometry::createCube(), material::default);
 
-    _scene = new scene();
-    //_scene->add(cube);
+    _scene = new scene((float)_width, (float)_height);
+    _scene->add(cube);
 
-    _program = programBuilder::buildProgram("shader.vert", "shader.frag");
+    _camera = _scene->getCamera();
 }
 
 void screen::importGltf()
 {
-    importer::importScene(R"(C:\Users\Patrick\Workspaces\glTF\sampleModels\Box\glTF\Box.gltf)");
+    _scene = importer::importScene(R"(C:\Users\Patrick\Workspaces\glTF\sampleModels\Box\glTF\Box.gltf)");
+    _camera = _scene->getCamera();
 }
 
 void screen::onInit()
 {
     glDebugger::enable();
     initDefaultResources();
-    initScene();
+    //initScene();
+    importGltf();
     initCamera();
 }
 
 void screen::onUpdate()
 {
-    _viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
 }
 
 void screen::onRender()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    _material->bindSemantic(parameterSemantic::MODELVIEW, _viewMatrix *  _modelMatrix);
-    _material->bindSemantic(parameterSemantic::PROJECTION, _projectionMatrix);
-
-    _material->bind();
-
-    _cube->render();
-
-    _material->unbind();
+    _scene->render();
 }
 
 void screen::onTick()

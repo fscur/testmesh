@@ -4,7 +4,7 @@
 
 class mesh
 {
-private:
+public:
     geometry* _geometry;
     material* _material;
     glm::mat4 _modelMatrix;

@@ -9,6 +9,28 @@ shader::shader(const string& fileName) :
 {
     _stage = getStage(fileName);
 
+    _content = load(_fileName);
+    _source = _content.c_str();
+
+    create();
+    compile();
+}
+
+shader::shader(const char * source, shaderStage::shaderStage stage)
+{
+    _stage = stage;
+    _source = source;
+    create();
+    compile();
+}
+
+shader::~shader()
+{
+    glDeleteShader(_id);
+}
+
+void shader::create()
+{
     switch (_stage)
     {
     case shaderStage::vertex:
@@ -32,14 +54,6 @@ shader::shader(const string& fileName) :
     default:
         break;
     }
-
-    compile();
-    validate();
-}
-
-shader::~shader()
-{
-    glDeleteShader(_id);
 }
 
 shaderStage::shaderStage shader::getStage(const string& fileName)
@@ -92,11 +106,7 @@ string shader::load(const string& fileName)
 
 shaderCompilationResult shader::compile()
 {
-    _content = load(_fileName);
-
-    auto source = _content.c_str();
-    glShaderSource(_id, 1, &source, 0);
-
+    glShaderSource(_id, 1, &_source, 0);
     glCompileShader(_id);
 
     return validate();

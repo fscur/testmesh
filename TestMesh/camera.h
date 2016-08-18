@@ -8,6 +8,9 @@ class camera
 {
 
 private:
+    float _width;
+    float _height;
+
     glm::vec3 _position;
     glm::vec3 _right;
     glm::vec3 _up;
@@ -15,7 +18,7 @@ private:
     glm::vec3 _target;
 
 public:
-    camera();
+    camera(float width, float height);
 
     ~camera(void);
 
@@ -31,6 +34,8 @@ public:
 
     bool init();
     void update();
+    glm::mat4 getProjection();
+    glm::mat4 getView();
     void translate(glm::vec3 translation);
     void orbit(glm::vec3 origin, glm::vec3 axis, float angle);
     void dolly(float amount);

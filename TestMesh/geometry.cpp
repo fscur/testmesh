@@ -21,14 +21,14 @@ geometry::~geometry()
     glDeleteVertexArrays(1, &_vao);
 }
 
-geometry* geometry::create(std::vector<vertex> &vertices, std::vector<uint> &indices)
+geometry* geometry::create(std::vector<vertex> &vertices, std::vector<short> &indices)
 {
     auto g = new geometry();
     g->addVertices(vertices, indices);
     return g;
 }
 
-void geometry::addVertices(std::vector<vertex> &vertices, std::vector<uint> &indices)
+void geometry::addVertices(std::vector<vertex> &vertices, std::vector<short> &indices)
 {
     _vertices = vertices;
     _indices = indices;
@@ -36,7 +36,7 @@ void geometry::addVertices(std::vector<vertex> &vertices, std::vector<uint> &ind
     GLuint verticesSize = vertices.size() * 3 * sizeof(GLfloat);
     GLuint texCoordsSize = vertices.size() * 2 * sizeof(GLfloat);
     GLuint normalsSize = vertices.size() * 3 * sizeof(GLfloat);
-    _indicesSize = indices.size() * sizeof(GLuint);
+    _indicesSize = indices.size() * sizeof(GLshort);
 
     GLfloat* vertexBuffer = new GLfloat[vertices.size() * 3];
     GLfloat* texCoordBuffer = new GLfloat[vertices.size() * 2];
@@ -53,17 +53,17 @@ void geometry::addVertices(std::vector<vertex> &vertices, std::vector<uint> &ind
     glEnableVertexAttribArray(0);
     glVertexAttribPointer((GLuint)0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-    glGenBuffers(1, &_texCoordsVbo);
-    glBindBuffer(GL_ARRAY_BUFFER, _texCoordsVbo);
-    glBufferData(GL_ARRAY_BUFFER, texCoordsSize, texCoordBuffer, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer((GLuint)1, 2, GL_FLOAT, GL_FALSE, 0, 0);
-
     glGenBuffers(1, &_normalsVbo);
     glBindBuffer(GL_ARRAY_BUFFER, _normalsVbo);
     glBufferData(GL_ARRAY_BUFFER, normalsSize, normalBuffer, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer((GLuint)2, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer((GLuint)1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    //glGenBuffers(1, &_texCoordsVbo);
+    //glBindBuffer(GL_ARRAY_BUFFER, _texCoordsVbo);
+    //glBufferData(GL_ARRAY_BUFFER, texCoordsSize, texCoordBuffer, GL_STATIC_DRAW);
+    //glEnableVertexAttribArray(2);
+    //glVertexAttribPointer((GLuint)2, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
     glGenBuffers(1, &_indicesVbo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indicesVbo);
@@ -114,7 +114,7 @@ void geometry::createBuffers(std::vector<vertex> &vertices,
 void geometry::render()
 {
     glBindVertexArray(_vao);
-    glDrawElements(GL_TRIANGLES, _indicesSize, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, _indicesSize, GL_UNSIGNED_SHORT, 0);
     glBindVertexArray(0);
 }
 
@@ -122,7 +122,7 @@ geometry* geometry::createCube()
 {
     auto _octree = new octree(aabb(glm::vec3(-0.7, -0.7, -0.7), glm::vec3(0.7, 0.7, 0.7)), 5, 100);
     auto vertices = std::vector<vertex>();
-    auto indices = std::vector<uint>();
+    auto indices = std::vector<short>();
     auto addVertex = [&](vertex& vertex)
     {
         uint index = -1;

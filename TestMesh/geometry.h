@@ -17,7 +17,7 @@ private:
     GLsizei _indicesSize;
 
     std::vector<vertex> _vertices;
-    std::vector<uint> _indices;
+    std::vector<short> _indices;
 
 private:
 
@@ -27,14 +27,14 @@ private:
         GLfloat* &texCoordBuffer,
         GLfloat* &normalBuffer);
 
-    void addVertices(std::vector<vertex> &vertices, std::vector<uint> &indices);
+    void addVertices(std::vector<vertex> &vertices, std::vector<short> &indices);
 
     geometry();
 
 public:
 
     ~geometry();
-    static geometry* create(std::vector<vertex> &vertices, std::vector<uint> &indices);
+    static geometry* create(std::vector<vertex> &vertices, std::vector<short> &indices);
     void render();
     static geometry* createCube();
 };

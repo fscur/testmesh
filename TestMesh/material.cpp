@@ -18,7 +18,6 @@ void material::addValue(std::string name, uint32_t value)
     _uintValues[name] = value;
 }
 
-
 void material::addValue(std::string name, glm::vec3 value)
 {
     _vec3Values[name] = value;
