@@ -1,16 +1,17 @@
 #pragma once
 #include "geometry.h"
 #include "material.h"
+#include "vertexArrayObject.h"
 
 class mesh
 {
 public:
-    geometry* _geometry;
     material* _material;
     glm::mat4 _modelMatrix;
+    vertexArrayObject* _vao;
 
 public:
-    mesh(geometry* geometry, material* material);
+    mesh(material* material, vertexArrayObject* vao);
     ~mesh();
 
     void render() const;

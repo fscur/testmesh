@@ -1,8 +1,8 @@
 #include "mesh.h"
 
-mesh::mesh(geometry* geometry, material* material) :
-    _geometry(geometry),
+mesh::mesh(material* material, vertexArrayObject* vao) :
     _material(material),
+    _vao(vao),
     _modelMatrix(glm::mat4())
 {
 }
@@ -10,10 +10,10 @@ mesh::mesh(geometry* geometry, material* material) :
 mesh::~mesh()
 {
     delete _material;
-    delete _geometry;
+    delete _vao;
 }
 
 void mesh::render() const
 {
-    _geometry->render();
+    _vao->render();
 }

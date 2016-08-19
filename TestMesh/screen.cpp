@@ -27,12 +27,12 @@ void screen::initCamera()
 
 void screen::initScene()
 {
-    auto cube = new mesh(geometry::createCube(), material::default);
+    //auto cube = new mesh(geometry::createCube(), material::default);
 
-    _scene = new scene((float)_width, (float)_height);
-    _scene->add(cube);
+    //_scene = new scene((float)_width, (float)_height);
+    //_scene->add(cube);
 
-    _camera = _scene->getCamera();
+    //_camera = _scene->getCamera();
 }
 
 void screen::importGltf()

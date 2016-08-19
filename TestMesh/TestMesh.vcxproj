@@ -140,6 +140,7 @@
     <ClInclude Include="tiny_gltf_loader.h" />
     <ClInclude Include="types.h" />
     <ClInclude Include="vertex.h" />
+    <ClInclude Include="vertexArrayObject.h" />
     <ClInclude Include="window.h" />
   </ItemGroup>
   <ItemGroup>
@@ -170,6 +171,7 @@
     <ClCompile Include="texturesManager.cpp" />
     <ClCompile Include="time.cpp" />
     <ClCompile Include="vertex.cpp" />
+    <ClCompile Include="vertexArrayObject.cpp" />
     <ClCompile Include="window.cpp" />
     <ClCompile Include="window_win64.cpp" />
   </ItemGroup>

@@ -171,6 +171,9 @@
     <ClInclude Include="material.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="vertexArrayObject.h">
+      <Filter>Header Files\Rendering</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="camera.cpp">
@@ -259,6 +262,9 @@
     </ClCompile>
     <ClCompile Include="material.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vertexArrayObject.cpp">
+      <Filter>Source Files\Rendering</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

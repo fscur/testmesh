@@ -6,6 +6,7 @@
 #include "mesh.h"
 #include "vertex.h"
 #include "window.h"
+#include "vertexArrayObject.h"
 
 #define TINYGLTF_LOADER_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
@@ -37,6 +38,72 @@ Scene* importGltf(std::string path)
     }
 
     return scene;
+}
+
+vertexArrayObject* vaoFromGltfPrimitive(tinygltf::Primitive gltfPrimitive, tinygltf::Scene* scene)
+{
+    auto verticesAcessorId = gltfPrimitive.attributes.find("POSITION")->second;
+    auto normalsAcessorId = gltfPrimitive.attributes.find("NORMAL")->second;
+    auto indicesAcessorId = gltfPrimitive.indices;
+
+    //indices
+    auto indicesAcessor = scene->accessors.find(indicesAcessorId)->second;
+    auto indicesBufferView = scene->bufferViews.find(indicesAcessor.bufferView)->second;
+    auto indicesBuffer = scene->buffers.find(indicesBufferView.buffer)->second;
+
+    auto indicesOffset = indicesAcessor.byteOffset + indicesBufferView.byteOffset;
+    auto indicesByteLength = indicesBufferView.byteLength;
+    auto indicesDataPtr = (short*)&indicesBuffer.data[indicesOffset];
+
+    //normals
+    auto normalsAcessor = scene->accessors.find(normalsAcessorId)->second;
+    auto normalsBufferView = scene->bufferViews.find(normalsAcessor.bufferView)->second;
+    auto normalsBuffer = scene->buffers.find(normalsBufferView.buffer)->second;
+
+    auto normalsOffset = normalsAcessor.byteOffset + normalsBufferView.byteOffset;
+    auto normalsByteLength = normalsBufferView.byteLength;
+    auto normalsDataPtr = (glm::vec3*)&normalsBuffer.data[normalsOffset];
+
+    //vertices
+    auto verticesAcessor = scene->accessors.find(verticesAcessorId)->second;
+    auto verticesBufferView = scene->bufferViews.find(verticesAcessor.bufferView)->second;
+    auto verticesBuffer = scene->buffers.find(verticesBufferView.buffer)->second;
+
+    auto verticesOffset = verticesAcessor.byteOffset + verticesBufferView.byteOffset;
+    auto verticesByteLength = verticesBufferView.byteLength;
+    auto verticesDataPtr = (glm::vec3*)&verticesBuffer.data[verticesOffset];
+
+    GLuint currentVertexAttrib = 0;
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
+
+    GLuint verticesVbo;
+    glGenBuffers(1, &verticesVbo);
+    glBindBuffer(verticesBufferView.target, verticesVbo);
+    glBufferData(verticesBufferView.target, verticesAcessor.byteStride * verticesAcessor.count, verticesDataPtr, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(currentVertexAttrib);
+    glVertexAttribPointer(currentVertexAttrib, 3, verticesAcessor.componentType, GL_FALSE, verticesAcessor.byteStride, 0);
+
+    ++currentVertexAttrib;
+
+    GLuint normalsVbo;
+    glGenBuffers(1, &normalsVbo);
+    glBindBuffer(normalsBufferView.target, normalsVbo);
+    glBufferData(normalsBufferView.target, normalsAcessor.byteStride * normalsAcessor.count, normalsDataPtr, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(currentVertexAttrib);
+    glVertexAttribPointer(currentVertexAttrib, 3, normalsAcessor.componentType, GL_FALSE, normalsAcessor.byteStride, 0);
+
+    ++currentVertexAttrib;
+
+    GLuint indicesEbo;
+    glGenBuffers(1, &indicesEbo);
+    glBindBuffer(indicesBufferView.target, indicesEbo);
+    glBufferData(indicesBufferView.target, indicesBufferView.byteLength, indicesDataPtr, GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+
+    return new vertexArrayObject(vao, indicesAcessor.count, indicesAcessor.componentType);
 }
 
 geometry* geometryFromGltfPrimitive(tinygltf::Primitive gltfPrimitive, tinygltf::Scene* scene)
@@ -198,8 +265,8 @@ scene* importer::importScene(std::string path)
         auto firstPrimitive = gltfMesh.second.primitives[0];
 
         auto material = materialFromGltf(firstPrimitive.material, gltfScene);
-        auto geometry = geometryFromGltfPrimitive(firstPrimitive, gltfScene);
-        auto m = new mesh(geometry, material);
+        auto vao = vaoFromGltfPrimitive(firstPrimitive, gltfScene);
+        auto m = new mesh(material, vao);
 
         s->add(m);
     }
