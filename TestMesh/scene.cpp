@@ -27,22 +27,20 @@ void scene::render()
     auto view = _camera->getView();
     auto projection = _camera->getProjection();
 
-    for (auto& mesh : _meshes)
+    for (auto& material : _materials)
     {
         auto modelView = view *  modelMatrix;
         auto modelViewInverseTranspose = glm::mat3(glm::transpose(glm::inverse(modelView)));
 
-        mesh->_material->bindSemantic(parameterSemantic::MODELVIEW, modelView);
-        mesh->_material->bindSemantic(parameterSemantic::PROJECTION, projection);
-        mesh->_material->bindSemantic(parameterSemantic::MODELVIEWINVERSETRANSPOSE, modelViewInverseTranspose);
+        material->bindSemantic(parameterSemantic::MODELVIEW, modelView);
+        material->bindSemantic(parameterSemantic::PROJECTION, projection);
+        material->bindSemantic(parameterSemantic::MODELVIEWINVERSETRANSPOSE, modelViewInverseTranspose);
 
-        mesh->_material->bind();
-        mesh->render();
-        mesh->_material->unbind();
+        material->render();
     }
 }
 
-void scene::add(const mesh* mesh)
+void scene::add(material* material)
 {
-    _meshes.push_back(mesh);
+    _materials.push_back(material);
 }

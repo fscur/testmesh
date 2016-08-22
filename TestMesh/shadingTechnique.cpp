@@ -1,11 +1,61 @@
 #include "shadingTechnique.h"
 
-shadingTechnique::shadingTechnique(std::vector<techniqueUniform> uniforms, std::vector<techniqueAttribute> attributes, std::vector<long> enabledStates, program* program) :
+shadingTechnique::shadingTechnique(
+    std::vector<techniqueUniform> uniforms,
+    std::vector<techniqueAttribute> attributes,
+    std::map<std::string, techniqueParameter*> parameters,
+    std::vector<long> enabledStates,
+    primitive* primitive,
+    program* program) :
     _uniforms(uniforms),
     _attributes(attributes),
+    _parameters(parameters),
     _enabledStates(enabledStates),
+    _primitive(primitive),
     _program(program)
 {
+    for (auto& parameter : parameters)
+    {
+        sortParameter(parameter.first, parameter.second);
+    }
+
+    createVao();
+
+    //for (auto& vbo : vbos)
+    //{
+    //    vbo.bind();
+    //    vbo->setLocation();
+    //    vbo->
+
+    //}
+
+    //
+
+    //glBindBuffer(normalsBufferView.target, normalsVbo);
+    //glEnableVertexAttribArray(normalsLocation);
+    //glVertexAttribPointer(normalsLocation, 3, normalsAcessor.componentType, GL_FALSE, normalsAcessor.byteStride, 0);
+
+    //glBindBuffer(verticesBufferView.target, verticesVbo);
+    //glEnableVertexAttribArray(verticesLocation);
+    //glVertexAttribPointer(verticesLocation, 3, verticesAcessor.componentType, GL_FALSE, verticesAcessor.byteStride, 0);
+
+    //glBindBuffer(indicesBufferView.target, indicesEbo);
+}
+
+void shadingTechnique::createVao()
+{
+    glGenVertexArrays(1, &_vao);
+    for (auto& attribute : _attributes)
+    {
+        auto attributeLocation = _program->getAttributeLocation(attribute.attributeName);
+
+        auto attributeParameter = _parameters.find(attribute.identifier)->second;
+        auto vbo = _primitive->findVbo(attributeParameter->semantic);
+
+        vbo->bindTo(_vao, attributeLocation);
+    }
+
+    _primitive->getEbo()->bindTo(_vao);
 }
 
 shadingTechnique::~shadingTechnique()
@@ -48,7 +98,7 @@ shadingTechnique::~shadingTechnique()
     delete _program;
 }
 
-void shadingTechnique::addParameter(std::string parameterName, techniqueParameter* parameter)
+void shadingTechnique::sortParameter(std::string parameterName, techniqueParameter* parameter)
 {
     for (auto& uniform : _uniforms)
     {
@@ -358,6 +408,8 @@ void shadingTechnique::bind()
 
     for (auto& uniformParameter : _mat4UniformParameters)
         _program->setUniform(uniformParameter->uniformName, uniformParameter->uniformValue);
+
+    glBindVertexArray(_vao);
 }
 
 void shadingTechnique::unbind()
@@ -366,4 +418,11 @@ void shadingTechnique::unbind()
         glDisable(state);
 
     _program->unbind();
+
+    glBindVertexArray(0);
+}
+
+void shadingTechnique::render()
+{
+    _primitive->render();
 }

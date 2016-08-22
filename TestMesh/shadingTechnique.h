@@ -1,6 +1,11 @@
 #pragma once
 #include "program.h"
 
+#include "primitive.h"
+#include "vertexBufferObject.h"
+#include "elementBufferObject.h"
+#include "parameterSemantic.h"
+
 //enum semantic
 //{
 //    LOCAL,
@@ -19,48 +24,6 @@
 //    VIEWPORT,
 //    JOINTMATRIX
 //};
-
-enum parameterSemantic
-{
-    NONE,
-    LOCAL,
-    MODEL,
-    PROJECTION,
-    MODELVIEW,
-    MODELVIEWPROJECTION,
-    MODELINVERSE,
-    VIEWINVERSE,
-    PROJECTIONINVERSE,
-    MODELVIEWINVERSE,
-    MODELVIEWPROJECTIONINVERSE,
-    MODELINVERSETRANSPOSE,
-    MODELVIEWINVERSETRANSPOSE,
-    VIEWPORT,
-    JOINTMATRIX,
-    POSITION,
-    NORMAL,
-    TEXCOORD,
-    COLOR,
-    JOINT,
-    WEIGHT
-};
-
-
-namespace std
-{
-    template<>
-    struct hash< ::parameterSemantic>
-    {
-        typedef ::parameterSemantic argument_type;
-        typedef std::underlying_type< argument_type >::type underlying_type;
-        typedef std::hash< underlying_type >::result_type result_type;
-        result_type operator()(const argument_type& arg) const
-        {
-            std::hash< underlying_type > hasher;
-            return hasher(static_cast< underlying_type >(arg));
-        }
-    };
-}
 
 enum parameterType
 {
@@ -151,9 +114,12 @@ class shadingTechnique
 {
 private:
     program* _program;
+    GLuint _vao;
+    primitive* _primitive;
 
     std::vector<techniqueUniform> _uniforms;
     std::vector<techniqueAttribute> _attributes;
+    std::map<std::string, techniqueParameter*> _parameters;
 
     std::vector<uniformParameter<glm::vec3>*> _vec3UniformParameters;
     std::vector<uniformParameter<glm::vec4>*> _vec4UniformParameters;
@@ -167,24 +133,24 @@ private:
     std::vector<attributeParameter<glm::mat4>*> _mat4AttributeParameters;
     std::vector<attributeParameter<uint32_t>*> _uintAttributeParameters;
 
-    std::map<std::string, techniqueParameter*> _parameters;
-
     std::vector<long> _enabledStates;
 
     std::map<std::string, glm::vec4> _vec4Values;
     std::unordered_map<parameterSemantic, glm::mat4> _mat4Semantics;
 
 private:
+    void sortParameter(std::string name, techniqueParameter* parameter);
 
 public:
     shadingTechnique(
         std::vector<techniqueUniform> uniforms,
         std::vector<techniqueAttribute> attributes,
+        std::map<std::string, techniqueParameter*> parameters,
         std::vector<long> enabledStates,
+        primitive* primitive,
         program* program);
+    void createVao();
     ~shadingTechnique();
-
-    void addParameter(std::string name, techniqueParameter* parameter);
 
     void bindValue(std::string parameterName, uint32_t value);
 
@@ -200,4 +166,5 @@ public:
 
     void bind();
     void unbind();
+    void render();
 };

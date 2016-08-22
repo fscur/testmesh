@@ -1,7 +1,8 @@
 #include "vertexArrayObject.h"
 
-vertexArrayObject::vertexArrayObject(GLuint vaoId, GLsizei componentCount, GLsizei componentType) :
+vertexArrayObject::vertexArrayObject(GLuint vaoId, GLenum mode, GLsizei componentCount, GLenum componentType) :
     _vaoId(vaoId),
+    _mode(mode),
     _componentCount(componentCount),
     _componentType(componentType)
 {
@@ -15,6 +16,6 @@ vertexArrayObject::~vertexArrayObject()
 void vertexArrayObject::render()
 {
     glBindVertexArray(_vaoId);
-    glDrawElements(GL_TRIANGLES, _componentCount, _componentType, 0);
+    glDrawElements(_mode, _componentCount, _componentType, 0);
     glBindVertexArray(0);
 }

@@ -6,13 +6,13 @@ class vertexArrayObject
 {
 private:
     GLuint _vaoId;
+    GLenum _mode;
     GLsizei _componentCount;
-    GLsizei _componentType;
+    GLenum _componentType;
 
 public:
-    vertexArrayObject(GLuint vaoId, GLsizei componentCount, GLsizei componentType);
+    vertexArrayObject(GLuint vaoId, GLenum mode, GLsizei componentCount, GLenum componentType);
     ~vertexArrayObject();
 
     void render();
 };
-

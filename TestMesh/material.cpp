@@ -102,3 +102,10 @@ void material::unbind()
 {
     _technique->unbind();
 }
+
+void material::render()
+{
+    bind();
+    _technique->render();
+    unbind();
+}

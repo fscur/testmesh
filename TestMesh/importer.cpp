@@ -7,6 +7,11 @@
 #include "vertex.h"
 #include "window.h"
 #include "vertexArrayObject.h"
+#include "gltfUtils.h"
+#include "vertexBufferObject.h"
+#include "elementBufferObject.h"
+#include "primitive.h"
+#include "shadingTechnique.h"
 
 #define TINYGLTF_LOADER_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
@@ -16,6 +21,20 @@
 #include <vector>
 
 using namespace tinygltf;
+
+parameterSemantic semanticFromString(std::string semantic)
+{
+    if (semantic == "MODELVIEW")
+        return parameterSemantic::MODELVIEW;
+    if (semantic == "NORMAL")
+        return parameterSemantic::NORMAL;
+    if (semantic == "MODELVIEWINVERSETRANSPOSE")
+        return parameterSemantic::MODELVIEWINVERSETRANSPOSE;
+    if (semantic == "POSITION")
+        return parameterSemantic::POSITION;
+    if (semantic == "PROJECTION")
+        return parameterSemantic::PROJECTION;
+}
 
 Scene* importGltf(std::string path)
 {
@@ -40,10 +59,8 @@ Scene* importGltf(std::string path)
     return scene;
 }
 
-vertexArrayObject* vaoFromGltfPrimitive(tinygltf::Primitive gltfPrimitive, tinygltf::Scene* scene)
+primitive* primitiveFromGltfPrimitive(tinygltf::Primitive gltfPrimitive, tinygltf::Scene* scene)
 {
-    auto verticesAcessorId = gltfPrimitive.attributes.find("POSITION")->second;
-    auto normalsAcessorId = gltfPrimitive.attributes.find("NORMAL")->second;
     auto indicesAcessorId = gltfPrimitive.indices;
 
     //indices
@@ -53,57 +70,42 @@ vertexArrayObject* vaoFromGltfPrimitive(tinygltf::Primitive gltfPrimitive, tinyg
 
     auto indicesOffset = indicesAcessor.byteOffset + indicesBufferView.byteOffset;
     auto indicesByteLength = indicesBufferView.byteLength;
-    auto indicesDataPtr = (short*)&indicesBuffer.data[indicesOffset];
+    auto indicesDataPtr = &indicesBuffer.data[indicesOffset];
 
-    //normals
-    auto normalsAcessor = scene->accessors.find(normalsAcessorId)->second;
-    auto normalsBufferView = scene->bufferViews.find(normalsAcessor.bufferView)->second;
-    auto normalsBuffer = scene->buffers.find(normalsBufferView.buffer)->second;
+    std::unordered_map<parameterSemantic, vertexBufferObject*> vbos;
+    for (auto& attribute : gltfPrimitive.attributes)
+    {
+        auto semantic = semanticFromString(attribute.first);
 
-    auto normalsOffset = normalsAcessor.byteOffset + normalsBufferView.byteOffset;
-    auto normalsByteLength = normalsBufferView.byteLength;
-    auto normalsDataPtr = (glm::vec3*)&normalsBuffer.data[normalsOffset];
+        auto attributeAcessor = scene->accessors.find(attribute.second)->second;
+        auto attributeBufferView = scene->bufferViews.find(attributeAcessor.bufferView)->second;
+        auto attributeBuffer = scene->buffers.find(attributeBufferView.buffer)->second;
 
-    //vertices
-    auto verticesAcessor = scene->accessors.find(verticesAcessorId)->second;
-    auto verticesBufferView = scene->bufferViews.find(verticesAcessor.bufferView)->second;
-    auto verticesBuffer = scene->buffers.find(verticesBufferView.buffer)->second;
+        auto attributeOffset = attributeAcessor.byteOffset + attributeBufferView.byteOffset;
+        auto attributeByteLength = attributeBufferView.byteLength;
+        auto attributeDataPtr = &attributeBuffer.data[attributeOffset];
 
-    auto verticesOffset = verticesAcessor.byteOffset + verticesBufferView.byteOffset;
-    auto verticesByteLength = verticesBufferView.byteLength;
-    auto verticesDataPtr = (glm::vec3*)&verticesBuffer.data[verticesOffset];
+        auto componentCount = attributeAcessor.type;
+        auto componentSize = gltfUtils::getComponentSizeFromComponentType(attributeAcessor.componentType);
+        auto attributeSize = componentCount * componentSize;
+        auto bufferSize = attributeSize * attributeAcessor.count;
 
-    GLuint currentVertexAttrib = 0;
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+        vbos[semantic] = new vertexBufferObject(
+            attributeBufferView.target,
+            bufferSize,
+            attributeDataPtr,
+            attributeAcessor.componentType,
+            attributeAcessor.byteStride);
+    }
 
-    GLuint verticesVbo;
-    glGenBuffers(1, &verticesVbo);
-    glBindBuffer(verticesBufferView.target, verticesVbo);
-    glBufferData(verticesBufferView.target, verticesAcessor.byteStride * verticesAcessor.count, verticesDataPtr, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(currentVertexAttrib);
-    glVertexAttribPointer(currentVertexAttrib, 3, verticesAcessor.componentType, GL_FALSE, verticesAcessor.byteStride, 0);
+    auto ebo = new elementBufferObject(
+        indicesBufferView.target,
+        indicesBufferView.byteLength,
+        indicesDataPtr,
+        indicesAcessor.count,
+        indicesAcessor.componentType);
 
-    ++currentVertexAttrib;
-
-    GLuint normalsVbo;
-    glGenBuffers(1, &normalsVbo);
-    glBindBuffer(normalsBufferView.target, normalsVbo);
-    glBufferData(normalsBufferView.target, normalsAcessor.byteStride * normalsAcessor.count, normalsDataPtr, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(currentVertexAttrib);
-    glVertexAttribPointer(currentVertexAttrib, 3, normalsAcessor.componentType, GL_FALSE, normalsAcessor.byteStride, 0);
-
-    ++currentVertexAttrib;
-
-    GLuint indicesEbo;
-    glGenBuffers(1, &indicesEbo);
-    glBindBuffer(indicesBufferView.target, indicesEbo);
-    glBufferData(indicesBufferView.target, indicesBufferView.byteLength, indicesDataPtr, GL_STATIC_DRAW);
-
-    glBindVertexArray(0);
-
-    return new vertexArrayObject(vao, indicesAcessor.count, indicesAcessor.componentType);
+    return new primitive(gltfPrimitive.mode, vbos, ebo);
 }
 
 geometry* geometryFromGltfPrimitive(tinygltf::Primitive gltfPrimitive, tinygltf::Scene* scene)
@@ -193,21 +195,7 @@ program* programFromGltf(std::string programName, tinygltf::Scene* scene)
     return programBuilder::buildProgramFromSource((char*)(&vertexSource[0]), (char*)(&fragmentSource[0]));
 }
 
-parameterSemantic semanticFromString(std::string semantic)
-{
-    if (semantic == "MODELVIEW")
-        return parameterSemantic::MODELVIEW;
-    if (semantic == "NORMAL")
-        return parameterSemantic::NORMAL;
-    if (semantic == "MODELVIEWINVERSETRANSPOSE")
-        return parameterSemantic::MODELVIEWINVERSETRANSPOSE;
-    if (semantic == "POSITION")
-        return parameterSemantic::POSITION;
-    if (semantic == "PROJECTION")
-        return parameterSemantic::PROJECTION;
-}
-
-material* materialFromGltf(std::string materialName, tinygltf::Scene* scene)
+material* materialFromGltf(std::string materialName, primitive* primitive, tinygltf::Scene* scene)
 {
     auto gltfMaterial = scene->materials.find(materialName)->second;
     auto gltfTechnique = scene->techniques.find(gltfMaterial.technique)->second;
@@ -224,14 +212,15 @@ material* materialFromGltf(std::string materialName, tinygltf::Scene* scene)
 
     //for(auto& enableState : gltfTechnique.states) WHY GOD WHYYYYYYYYYYYYYY
 
-    auto program = programFromGltf(gltfTechnique.program, scene);
-    auto technique = new shadingTechnique(uniforms, attributes, enableStates, program);
-
+    auto parameters = std::map<std::string, techniqueParameter*>();
     for (auto& parameter : gltfTechnique.parameters)
     {
         auto semantic = semanticFromString(parameter.second.semantic);
-        technique->addParameter(parameter.first, new techniqueParameter(parameter.second.type, semantic));
+        parameters[parameter.first] = new techniqueParameter(parameter.second.type, semantic);
     }
+
+    auto program = programFromGltf(gltfTechnique.program, scene);
+    auto technique = new shadingTechnique(uniforms, attributes, parameters, enableStates, primitive, program);
 
     auto mat = new material(gltfMaterial.name, technique);
 
@@ -264,11 +253,10 @@ scene* importer::importScene(std::string path)
     {
         auto firstPrimitive = gltfMesh.second.primitives[0];
 
-        auto material = materialFromGltf(firstPrimitive.material, gltfScene);
-        auto vao = vaoFromGltfPrimitive(firstPrimitive, gltfScene);
-        auto m = new mesh(material, vao);
+        auto primitive = primitiveFromGltfPrimitive(firstPrimitive, gltfScene);
+        auto material = materialFromGltf(firstPrimitive.material, primitive, gltfScene);
 
-        s->add(m);
+        s->add(material);
     }
 
     return s;
@@ -276,34 +264,35 @@ scene* importer::importScene(std::string path)
 
 material* importer::importDefaultMaterial()
 {
-    auto vertName = "../TestMesh/defaultVert.vert";
-    auto fragName = "../TestMesh/defaultFrag.frag";
+    //auto vertName = "../TestMesh/defaultVert.vert";
+    //auto fragName = "../TestMesh/defaultFrag.frag";
 
-    auto program = programBuilder::buildProgramFromFile(vertName, fragName);
+    //auto program = programBuilder::buildProgramFromFile(vertName, fragName);
 
-    std::vector<techniqueUniform> uniforms =
-    {
-        techniqueUniform("modelViewMatrix", "u_modelViewMatrix"),
-        techniqueUniform("projectionMatrix", "u_projectionMatrix"),
-        techniqueUniform("emission", "u_emission")
-    };
+    //std::vector<techniqueUniform> uniforms =
+    //{
+    //    techniqueUniform("modelViewMatrix", "u_modelViewMatrix"),
+    //    techniqueUniform("projectionMatrix", "u_projectionMatrix"),
+    //    techniqueUniform("emission", "u_emission")
+    //};
 
-    std::vector<techniqueAttribute> attributes =
-    {
-        techniqueAttribute("position", "a_position")
-    };
+    //std::vector<techniqueAttribute> attributes =
+    //{
+    //    techniqueAttribute("position", "a_position")
+    //};
 
-    std::vector<long> enabledStates = { 2884, 2929 };
+    //std::vector<long> enabledStates = { 2884, 2929 };
 
-    auto technique = new shadingTechnique(uniforms, attributes, enabledStates, program);
+    //auto parameters = std::map<std::string, techniqueParameter*>();
+    //parameters["modelViewMatrix"] = new techniqueParameter(35676, parameterSemantic::MODELVIEW);
+    //parameters["projectionMatrix"] = new techniqueParameter(35676, parameterSemantic::PROJECTION);
+    //parameters["emission"] = new techniqueParameter(35666);
+    //parameters["position"] = new techniqueParameter(35665, parameterSemantic::POSITION);
 
-    technique->addParameter("modelViewMatrix", new techniqueParameter(35676, parameterSemantic::MODELVIEW));
-    technique->addParameter("projectionMatrix", new techniqueParameter(35676, parameterSemantic::PROJECTION));
-    technique->addParameter("emission", new techniqueParameter(35666));
-    technique->addParameter("position", new techniqueParameter(35665, parameterSemantic::POSITION));
+    //auto technique = new shadingTechnique(uniforms, attributes, parameters, enabledStates, program);
 
-    auto mat = new material("Effect1", technique);
-    mat->addValue("emission", glm::vec4(0.8f, 0.8f, 0.8f, 1.0f));
+    //auto mat = new material("Effect1", technique);
+    //mat->addValue("emission", glm::vec4(0.8f, 0.8f, 0.8f, 1.0f));
 
-    return mat;
+    return nullptr;
 }

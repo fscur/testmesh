@@ -142,6 +142,11 @@ void program::setUniform(std::string name, glm::vec4 value)
     glUniform4f(location, value.x, value.y, value.z, value.w);
 }
 
+int32_t program::getAttributeLocation(std::string name)
+{
+    return glGetAttribLocation(_id, name.c_str());
+}
+
 void program::link()
 {
     glLinkProgram(_id);

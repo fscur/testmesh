@@ -7,7 +7,7 @@
 class scene
 {
 private:
-    std::vector<const mesh*> _meshes;
+    std::vector<material*> _materials;
     camera* _camera;
 
     float _width;
@@ -19,7 +19,7 @@ public:
 
     void render();
 
-    void add(const mesh* mesh);
+    void add(material* material);
 
     camera* getCamera() { return _camera; }
 };

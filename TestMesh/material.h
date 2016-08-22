@@ -45,5 +45,5 @@ public:
 
     void bind();
     void unbind();
+    void render();
 };
-
