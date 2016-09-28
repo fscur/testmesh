@@ -368,7 +368,6 @@ void getDpi()
     double hPixelsPerInch = GetDeviceCaps(screen, LOGPIXELSX);
     double vPixelsPerInch = GetDeviceCaps(screen, LOGPIXELSY);
     ReleaseDC(NULL, screen);
-    std::cout << std::to_string((hPixelsPerInch + vPixelsPerInch) * 0.5);
 }
 
 void window::init()

@@ -23,57 +23,14 @@ private:
 	int _blur;
 
 	camera* _camera;
-
-	framebuffer* _sceneFramebuffer;
-	framebuffer* _screenFramebuffer;
-	framebuffer* _defaultFramebuffer;
-	framebuffer* _uiFramebuffer;
-	framebuffer* _blurHFramebuffer;
-	framebuffer* _blurVFramebuffer;
-
-	renderTarget* _sceneRT;
-	renderTarget* _screenRT;
-	renderTarget* _uiRT;
-	renderTarget* _blurHRT;
-	renderTarget* _blurVRT;
-
-	shader* _sceneShader;
-    shader* _screenShader;
-	shader* _uiShader;
-	shader* _blurHShader;
-	shader* _blurVShader;
-
-	geometry* _sceneQuad;
-    geometry* _screenQuad;
-	geometry* _uiQuad;
-	geometry* _blurQuad;
-
-	texture* _sceneTexture;
+	shader* _shader;
+	geometry* _cube;
 
 private:
     void initGL();
     void initCamera();
-    
-	void createSceneQuad();
-    void initSceneShader();
-	void initSceneFramebuffer();
-
-	void createScreenQuad();
-	void initScreenShader();
-	void initScreenFramebuffer();
-
-	void createUiQuad();
-	void initUiShader();
-	void initUiFramebuffer();
-
-	void createBlurQuad();
-	void initBlurHShader();
-	void initBlurVShader();
-	void initBlurHFramebuffer();
-	void initBlurVFramebuffer();
-
-	void renderBlur(renderTarget* renderTarget);
-	void renderUi();
+	void createCube();
+    void initShader();
 
 public:
     screen(std::string name, uint witdh, uint height);
