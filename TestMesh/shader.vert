@@ -8,6 +8,6 @@ out vec3 fragPosition;
 
 void main()
 {
-	gl_Position = mvp * vec4(inPosition, 1.0);
+	gl_Position = mvp * vec4(inPosition * 2, 1.0);
 	fragPosition = inPosition;
 }

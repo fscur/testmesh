@@ -54,7 +54,7 @@ public:
 	{
 		SDL_Surface* surface = IMG_Load(fileName.c_str());
 
-		GLuint id, width, height;
+		GLuint width, height;
 		
 		width = surface->w;
 		height = surface->h;
