@@ -21,7 +21,8 @@ void screen::onUpdate()
 }
 
 void screen::onRender()
-{  
+{
+
 }
 
 void screen::onTick()
