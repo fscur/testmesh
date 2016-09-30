@@ -9,6 +9,14 @@
 #include "framebuffer.h"
 #include <glm\glm.hpp>
 
+struct image
+{
+    GLuint width;
+    GLuint height;
+    GLuint format;
+    GLvoid* data;
+};
+
 class screen :
     public window
 {
@@ -25,11 +33,13 @@ private:
 	camera* _camera;
 	shader* _shader;
 	geometry* _cube;
-
+    GLuint _cubemapId;
 private:
     void initGL();
     void initCamera();
 	void createCube();
+    image loadImage(std::string fileName);
+    void createCubeMap();
     void initShader();
 
 public:

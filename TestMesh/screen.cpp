@@ -30,6 +30,7 @@ void screen::initGL()
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 }
 
 void screen::createCube()
@@ -59,21 +60,68 @@ void screen::createCube()
     _cube = geometry::create(vertices, indices);
 }
 
-void screen::createCube()
+image screen::loadImage(std::string fileName)
 {
- /*   GLuint id = 0;
+    SDL_Surface* surface = IMG_Load(fileName.c_str());
+
+    GLuint width, height;
+
+    width = surface->w;
+    height = surface->h;
+
+    GLuint format = 0;
+    switch (surface->format->BitsPerPixel)
+    {
+    case 24:
+        if (surface->format->Rmask == 255)
+            format = GL_RGB;
+        else
+            format = GL_BGR;
+        break;
+    case 32:
+        if (surface->format->Rmask == 255)
+            format = GL_RGBA;
+        else
+            format = GL_BGRA;
+        break;
+    default:
+        break;
+    }
+
+    auto ret = image();
+    ret.width = width;
+    ret.height = height;
+    ret.format = format;
+    ret.data = static_cast<GLvoid*>(surface->pixels);
+
+    return ret;
+}
+
+void screen::createCubeMap()
+{
+    GLuint id = 0;
     glGenTextures(1, &id);
     glBindTexture(GL_TEXTURE_CUBE_MAP, id);
 
-    bool hasData = data.size() > 0;
+    vector<image> images;
+    for (unsigned int i = 0; i < 6; i++)
+    {
+        auto fileName = std::to_string(i) + ".png";
+        images.push_back(loadImage(fileName));
+    }
 
     for (unsigned int i = 0; i < 6; i++)
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, level, internalFormat, size.width, size.height, 0, format, type, hasData ? data[i] : 0);
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA, images[i].width, images[i].height, 0, images[i].format, GL_UNSIGNED_BYTE, images[i].data);
 
-    auto t = new texture(id, size, "", "");
-    t->_textureType = GL_TEXTURE_CUBE_MAP;
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-    return t;*/
+    glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
+    _cubemapId = id;
 }
 
 void screen::initShader()
@@ -82,6 +130,7 @@ void screen::initShader()
     _shader->addAttribute("inPosition");
     _shader->init();
     _shader->addUniform("mvp", 0);
+    _shader->addUniform("cubemap", 1);
 }
 
 void screen::initCamera()
@@ -99,6 +148,7 @@ void screen::onInit()
     initCamera();
     initShader();
     createCube();
+    createCubeMap();
 }
 
 float t = 0.0f;
@@ -122,6 +172,7 @@ void screen::onRender()
 
     _shader->bind();
     _shader->getUniform(0).set(_projectionMatrix * _viewMatrix);
+    _shader->getUniform(1).set(GL_TEXTURE_CUBE_MAP, _cubemapId, 0);
     _cube->render();
     _shader->unbind();
 }
@@ -133,3 +184,469 @@ void screen::onTick()
 void screen::onClosing()
 {
 }
+
+/*
+#include "screen.h"
+#include "application.h"
+#include "octree.h"
+#include "aabb.h"
+#include <iostream>
+#include <glm\gtc\matrix_transform.hpp>
+#include <SDL\SDL.h>
+#include <SDL\SDL_image.h>
+
+float t = 0.0f;
+
+screen::screen(std::string name, uint width, uint height) :
+window(name, width, height),
+_resolution(glm::vec2(_width, _height))
+{
+SDL_Init(SDL_INIT_VIDEO);
+IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG | IMG_INIT_TIF);
+_blur = 2;
+}
+
+void screen::initGL()
+{
+glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
+_defaultFramebuffer = new framebuffer(true);
+}
+
+void screen::createSceneQuad()
+{
+auto vertices = std::vector<vertex>
+{
+vertex(glm::vec3(0.0f, 0.0f, +0.0f), glm::vec2(0.0f, 1.0f)),
+vertex(glm::vec3(1.0f, 0.0f, +0.0f), glm::vec2(1.0f, 1.0f)),
+vertex(glm::vec3(1.0f, 1.0f, +0.0f), glm::vec2(1.0f, 0.0f)),
+vertex(glm::vec3(0.0f, 1.0f, +0.0f), glm::vec2(0.0f, 0.0f))
+};
+
+auto indices = std::vector<uint>{ 0, 1, 2, 2, 3, 0 };
+
+_sceneQuad = geometry::create(vertices, indices);
+_sceneModelMatrix = glm::mat4(
+3.0f, 0.0f, 0.0f, 0.0f,
+0.0f, 3.0f, 0.0f, 0.0f,
+0.0f, 0.0f, 3.0f, 0.0f,
+0.0f, 0.0f, 0.0f, 1.0f);
+}
+
+void screen::initSceneFramebuffer()
+{
+auto tex = new texture(
+_width,
+_height,
+GL_TEXTURE_2D,
+GL_RGBA8,
+GL_RGBA,
+GL_UNSIGNED_BYTE,
+nullptr,
+GL_CLAMP_TO_EDGE,
+GL_LINEAR_MIPMAP_LINEAR,
+GL_LINEAR,
+true);
+
+tex->generate();
+
+_sceneRT = new renderTarget(
+GL_COLOR_ATTACHMENT0,
+_width,
+_height,
+tex
+);
+
+_sceneFramebuffer = new framebuffer();
+_sceneFramebuffer->add(_sceneRT);
+}
+
+void screen::initSceneShader()
+{
+_sceneShader = new shader("SHADER", "shader.vert", "shader.frag");
+_sceneShader->addAttribute("inPosition");
+_sceneShader->addAttribute("inTexCoord");
+_sceneShader->addAttribute("inNormal");
+_sceneShader->addAttribute("inModelMatrix");
+_sceneShader->init();
+_sceneShader->addUniform("mvp", 0);
+_sceneShader->addUniform("inputTexture", 1);
+_sceneTexture = texture::load("0.jpg");
+}
+
+void screen::createScreenQuad()
+{
+auto vertices = std::vector<vertex>
+{
+vertex(glm::vec3(-1.0f, -1.0f, +0.0f), glm::vec2(0.0f, 0.0f)),
+vertex(glm::vec3(+1.0f, -1.0f, +0.0f), glm::vec2(1.0f, 0.0f)),
+vertex(glm::vec3(+1.0f, +1.0f, +0.0f), glm::vec2(1.0f, 1.0f)),
+vertex(glm::vec3(-1.0f, +1.0f, +0.0f), glm::vec2(0.0f, 1.0f))
+};
+
+auto indices = std::vector<uint>{ 0, 1, 2, 2, 3, 0 };
+
+_screenQuad = geometry::create(vertices, indices);
+}
+
+void screen::initScreenFramebuffer()
+{
+auto tex = new texture(
+_width,
+_height,
+GL_TEXTURE_2D,
+GL_RGBA8,
+GL_RGBA,
+GL_UNSIGNED_BYTE,
+nullptr,
+GL_CLAMP_TO_EDGE,
+GL_LINEAR_MIPMAP_LINEAR,
+GL_LINEAR,
+true);
+
+tex->generate();
+
+_screenRT = new renderTarget(
+GL_COLOR_ATTACHMENT0,
+_width,
+_height,
+tex
+);
+
+_screenFramebuffer = new framebuffer();
+_screenFramebuffer->add(_screenRT);
+}
+
+void screen::initScreenShader()
+{
+_screenShader = new shader("SHADER", "screen.vert", "screen.frag");
+
+_screenShader->addAttribute("inPosition");
+_screenShader->addAttribute("inTexCoord");
+
+_screenShader->init();
+_screenShader->addUniform("inputTexture", 1);
+}
+
+void screen::createBlurQuad()
+{
+auto vertices = std::vector<vertex>
+{
+vertex(glm::vec3(-1.0f, -1.0f, +0.0f), glm::vec2(0.0f, 0.0f)),
+vertex(glm::vec3(+1.0f, -1.0f, +0.0f), glm::vec2(1.0f, 0.0f)),
+vertex(glm::vec3(+1.0f, +1.0f, +0.0f), glm::vec2(1.0f, 1.0f)),
+vertex(glm::vec3(-1.0f, +1.0f, +0.0f), glm::vec2(0.0f, 1.0f))
+};
+
+auto indices = std::vector<uint>{ 0, 1, 2, 2, 3, 0 };
+
+_blurQuad = geometry::create(vertices, indices);
+}
+
+void screen::initBlurHShader()
+{
+_blurHShader = new shader("BlurH", "blurH.vert", "blurH.frag");
+_blurHShader->addAttribute("inPosition");
+_blurHShader->addAttribute("inTexCoord");
+_blurHShader->addAttribute("inNormal");
+_blurHShader->addAttribute("inModelMatrix");
+_blurHShader->init();
+_blurHShader->addUniform("inputTexture", 0);
+_blurHShader->addUniform("resolution", 1);
+_blurHShader->addUniform("level", 2);
+}
+
+void screen::initBlurHFramebuffer()
+{
+auto tex = new texture(
+_width,
+_height,
+GL_TEXTURE_2D,
+GL_RGBA8,
+GL_RGBA,
+GL_UNSIGNED_BYTE,
+nullptr,
+GL_CLAMP_TO_EDGE,
+GL_LINEAR_MIPMAP_LINEAR,
+GL_LINEAR,
+true);
+
+tex->generate();
+
+_blurHRT = new renderTarget(
+GL_COLOR_ATTACHMENT0,
+_width,
+_height,
+tex
+);
+
+_blurHFramebuffer = new framebuffer();
+_blurHFramebuffer->add(_blurHRT);
+}
+
+void screen::initBlurVShader()
+{
+_blurVShader = new shader("BlurV", "blurV.vert", "blurV.frag");
+_blurVShader->addAttribute("inPosition");
+_blurVShader->addAttribute("inTexCoord");
+_blurVShader->addAttribute("inNormal");
+_blurVShader->addAttribute("inModelMatrix");
+_blurVShader->init();
+_blurVShader->addUniform("inputTexture", 0);
+_blurVShader->addUniform("resolution", 1);
+_blurVShader->addUniform("level", 2);
+}
+
+void screen::initBlurVFramebuffer()
+{
+auto tex = new texture(
+_width,
+_height,
+GL_TEXTURE_2D,
+GL_RGBA8,
+GL_RGBA,
+GL_UNSIGNED_BYTE,
+nullptr,
+GL_CLAMP_TO_EDGE,
+GL_LINEAR_MIPMAP_LINEAR,
+GL_LINEAR,
+true);
+
+tex->generate();
+
+_blurVRT = new renderTarget(
+GL_COLOR_ATTACHMENT0,
+_width,
+_height,
+tex
+);
+
+_blurVFramebuffer = new framebuffer();
+_blurVFramebuffer->add(_blurVRT);
+}
+
+void screen::createUiQuad()
+{
+auto vertices = std::vector<vertex>
+{
+vertex(glm::vec3(0.0f, 0.0f, +0.0f), glm::vec2(0.0f, 1.0f)),
+vertex(glm::vec3(1.0f, 0.0f, +0.0f), glm::vec2(1.0f, 1.0f)),
+vertex(glm::vec3(1.0f, 1.0f, +0.0f), glm::vec2(1.0f, 0.0f)),
+vertex(glm::vec3(0.0f, 1.0f, +0.0f), glm::vec2(0.0f, 0.0f))
+};
+
+auto indices = std::vector<uint>{ 0, 1, 2, 2, 3, 0 };
+
+_uiQuad = geometry::create(vertices, indices);
+}
+
+void screen::initUiShader()
+{
+_uiShader = new shader("Ui", "glass.vert", "glass.frag");
+_uiShader->addAttribute("inPosition");
+_uiShader->addAttribute("inTexCoord");
+_uiShader->addAttribute("inNormal");
+_uiShader->addAttribute("inModelMatrix");
+_uiShader->init();
+_uiShader->addUniform("mvp", 0);
+_uiShader->addUniform("background", 1);
+}
+
+void screen::initUiFramebuffer()
+{
+auto tex = new texture(
+_width,
+_height,
+GL_TEXTURE_2D,
+GL_RGBA8,
+GL_RGBA,
+GL_UNSIGNED_BYTE,
+nullptr,
+GL_CLAMP_TO_EDGE,
+GL_LINEAR,
+GL_LINEAR,
+false);
+
+tex->generate();
+
+_uiRT = new renderTarget(
+GL_COLOR_ATTACHMENT0,
+_width,
+_height,
+tex
+);
+
+_uiFramebuffer = new framebuffer();
+_uiFramebuffer->add(_uiRT);
+}
+
+void screen::initCamera()
+{
+_camera = new camera();
+_camera->setPosition(glm::vec3(3.0f, 2.0f, 4.5f));
+_camera->setTarget(glm::vec3(0.0f));
+_projectionMatrix = glm::perspective<float>(glm::half_pi<float>(), 1600.0f / 900.0f, 0.1f, 100.0f);
+_viewMatrix = glm::lookAt<float>(_camera->getPosition(), _camera->getTarget(), _camera->getUp());
+}
+
+screen::~screen()
+{
+delete(_sceneFramebuffer);
+delete(_uiFramebuffer);
+delete(_sceneRT);
+delete(_uiRT);
+}
+
+void screen::onInit()
+{
+initCamera();
+initGL();
+
+createSceneQuad();
+initSceneFramebuffer();
+initSceneShader();
+
+createScreenQuad();
+initScreenFramebuffer();
+initScreenShader();
+
+createBlurQuad();
+initBlurHFramebuffer();
+initBlurHShader();
+initBlurVFramebuffer();
+initBlurVShader();
+
+createUiQuad();
+initUiFramebuffer();
+initUiShader();
+}
+
+void screen::onUpdate()
+{
+t += 0.01;
+
+_uiModelMatrix = glm::mat4(
+2.0f, 0.0f, 0.0f, 0.0f,
+0.0f, 2.0f, 0.0f, 0.0f,
+0.0f, 0.0f, 1.0f, 0.0f,
+glm::cos(t) * 4.0f, 0.0f, 0.5f, 1.0f);
+}
+
+void screen::renderBlur(renderTarget* renderTarget)
+{
+_blurHFramebuffer->bindForDrawing();
+_blurHShader->bind();
+_blurHShader->getUniform(0).set(renderTarget->tex->id, 0);
+_blurHShader->getUniform(1).set(_resolution);
+_blurHShader->getUniform(2).set(_blur);
+_blurQuad->render();
+_blurHShader->unbind();
+_blurHFramebuffer->unbind(GL_FRAMEBUFFER);
+
+_blurVFramebuffer->bindForDrawing();
+_blurVShader->bind();
+_blurVShader->getUniform(0).set(_blurHRT->tex->id, 0);
+_blurVShader->getUniform(1).set(_resolution);
+_blurVShader->getUniform(2).set(_blur);
+_blurQuad->render();
+_blurVShader->unbind();
+_blurVFramebuffer->unbind(GL_FRAMEBUFFER);
+
+/*for (size_t i = 0; i < 10; i++)
+{
+_blurHFramebuffer->bindForDrawing();
+_blurHShader->bind();
+_blurHShader->getUniform(0).set(_blurVRT->tex->id, 0);
+_blurHShader->getUniform(1).set(_resolution);
+_blurQuad->render();
+_blurHShader->unbind();
+_blurHFramebuffer->unbind(GL_FRAMEBUFFER);
+
+_blurVFramebuffer->bindForDrawing();
+_blurVShader->bind();
+_blurVShader->getUniform(0).set(_blurHRT->tex->id, 0);
+_blurVShader->getUniform(1).set(_resolution);
+_blurQuad->render();
+_blurVShader->unbind();
+_blurVFramebuffer->unbind(GL_FRAMEBUFFER);
+}
+}
+
+void screen::renderUi()
+{
+    _defaultFramebuffer->bindForDrawing();
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendColor(1, 1, 1, 1);
+
+    _uiShader->bind();
+    _uiShader->getUniform(0).set(_projectionMatrix * _viewMatrix * _uiModelMatrix);
+    _uiShader->getUniform(1).set(_blurVRT->tex->id, 0);
+    _blurQuad->render();
+    _uiShader->unbind();
+
+    glBlendColor(0, 0, 0, 0);
+    glDisable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+
+    glEnable(GL_CULL_FACE);
+
+    _uiFramebuffer->unbind(GL_FRAMEBUFFER);
+}
+
+void screen::onRender()
+{
+    //	_screenFramebuffer->bind(GL_FRAMEBUFFER);
+    //	glClearColor(0.0, 0.0, 0.0, 0.0);
+    //	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    //	_screenShader->bind();
+    //	//_screenShader->getUniform(0).set(_projectionMatrix * _viewMatrix * _screenModelMatrix);
+    //	_screenQuad->render();
+    //	_screenShader->unbind();
+    //
+    //	_screenFramebuffer->unbind(GL_FRAMEBUFFER);
+    //	_screenFramebuffer->blitToDefault(_screenRT);
+
+    _sceneFramebuffer->bind(GL_FRAMEBUFFER);
+
+    glClearColor(1.0, 1.0, 1.0, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    _sceneShader->bind();
+    _sceneShader->getUniform(0).set(_projectionMatrix * _viewMatrix * _sceneModelMatrix);
+    _sceneShader->getUniform(1).set(_sceneTexture->id, 0);
+    _sceneQuad->render();
+    _sceneShader->unbind();
+
+    _sceneFramebuffer->blitToDefault(_sceneRT);
+
+    renderBlur(_sceneRT);
+
+    glActiveTexture(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, _blurVRT->tex->id);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    _screenFramebuffer->bindForDrawing();
+    _screenShader->bind();
+    _screenShader->getUniform(0).set(_blurVRT->tex->id, 0);
+    _screenQuad->render();
+    _screenShader->unbind();
+
+
+    renderBlur(_screenRT);
+    //_screenFramebuffer->unbind(GL_FRAMEBUFFER);
+
+
+    renderUi();
+}
+
+void screen::onTick()
+{
+}
+
+void screen::onClosing()
+{
+}
+*/
