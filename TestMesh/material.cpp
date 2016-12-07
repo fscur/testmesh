@@ -38,6 +38,11 @@ void material::addValue(std::string name, glm::mat4 value)
     _mat4Values[name] = value;
 }
 
+void material::addValue(std::string name, texture* value)
+{
+    _textureValues[name] = value;
+}
+
 void material::bindSemantic(parameterSemantic semantic, uint32_t value)
 {
     _uintSemantics[semantic] = value;
@@ -93,6 +98,9 @@ void material::bind()
         _technique->bindValue(value.first, value.second);
 
     for (auto& value : _mat4Values)
+        _technique->bindValue(value.first, value.second);
+
+    for (auto& value : _textureValues)
         _technique->bindValue(value.first, value.second);
 
     _technique->bind();

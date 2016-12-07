@@ -17,6 +17,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 
 #include "tiny_gltf_loader.h"
+#include "../inc/glm/vec3.hpp"
 
 #include <vector>
 
@@ -34,6 +35,8 @@ parameterSemantic semanticFromString(std::string semantic)
         return parameterSemantic::POSITION;
     if (semantic == "PROJECTION")
         return parameterSemantic::PROJECTION;
+    if (semantic == "TEXCOORD_0")
+        return parameterSemantic::TEXCOORD;
 }
 
 Scene* importGltf(std::string path)
@@ -73,6 +76,7 @@ primitive* primitiveFromGltfPrimitive(tinygltf::Primitive gltfPrimitive, tinyglt
     auto indicesDataPtr = &indicesBuffer.data[indicesOffset];
 
     std::unordered_map<parameterSemantic, vertexBufferObject*> vbos;
+
     for (auto& attribute : gltfPrimitive.attributes)
     {
         auto semantic = semanticFromString(attribute.first);
@@ -106,77 +110,6 @@ primitive* primitiveFromGltfPrimitive(tinygltf::Primitive gltfPrimitive, tinyglt
         indicesAcessor.componentType);
 
     return new primitive(gltfPrimitive.mode, vbos, ebo);
-}
-
-geometry* geometryFromGltfPrimitive(tinygltf::Primitive gltfPrimitive, tinygltf::Scene* scene)
-{
-    auto verticesAcessorId = gltfPrimitive.attributes.find("POSITION")->second;
-    auto normalsAcessorId = gltfPrimitive.attributes.find("NORMAL")->second;
-    auto indicesAcessorId = gltfPrimitive.indices;
-
-    //indices
-    auto indicesAcessor = scene->accessors.find(indicesAcessorId)->second;
-
-    auto indicesBufferViewId = indicesAcessor.bufferView;
-    auto indicesBufferView = scene->bufferViews.find(indicesBufferViewId)->second;
-
-    auto indicesBufferId = indicesBufferView.buffer;
-    auto indicesBuffer = scene->buffers.find(indicesBufferId)->second;
-
-    auto indicesOffset = indicesAcessor.byteOffset + indicesBufferView.byteOffset;
-    auto indicesByteLength = indicesBufferView.byteLength;
-    auto indicesDataPtr = (short*)&indicesBuffer.data[indicesOffset];
-
-    auto indices = std::vector<short>();
-
-    for (size_t i = 0; i < indicesAcessor.count; i++)
-    {
-        indices.push_back(indicesDataPtr[i]);
-    }
-
-    //normals
-    auto normalsAcessor = scene->accessors.find(normalsAcessorId)->second;
-    auto normalsBufferView = scene->bufferViews.find(normalsAcessor.bufferView)->second;
-    auto normalsBuffer = scene->buffers.find(normalsBufferView.buffer)->second;
-
-    auto normalsOffset = normalsAcessor.byteOffset + normalsBufferView.byteOffset;
-    auto normalsByteLength = normalsBufferView.byteLength;
-    auto normalsDataPtr = (glm::vec3*)&normalsBuffer.data[normalsOffset];
-
-    auto normals = std::vector<glm::vec3>();
-
-    for (size_t i = 0; i < normalsAcessor.count; i++)
-    {
-        normals.push_back(normalsDataPtr[i]);
-    }
-
-    ////vertices
-    auto verticesAcessor = scene->accessors.find(verticesAcessorId)->second;
-    auto verticesBufferView = scene->bufferViews.find(verticesAcessor.bufferView)->second;
-    auto verticesBuffer = scene->buffers.find(verticesBufferView.buffer)->second;
-
-    auto verticesOffset = verticesAcessor.byteOffset + verticesBufferView.byteOffset;
-    auto verticesByteLength = verticesBufferView.byteLength;
-    auto verticesDataPtr = (glm::vec3*)&verticesBuffer.data[verticesOffset];
-
-    auto vertices = std::vector<glm::vec3>();
-
-    for (size_t i = 0; i < verticesAcessor.count; i++)
-    {
-        vertices.push_back(verticesDataPtr[i]);
-    }
-
-    auto v = std::vector<vertex>();
-    for (size_t i = 0; i < vertices.size(); i++)
-    {
-        auto position = vertices[i];
-        auto normal = normals[i];
-        auto texCoord = glm::vec2();
-
-        v.push_back(vertex(position, texCoord, normal));
-    }
-
-    return geometry::create(v, indices);
 }
 
 program* programFromGltf(std::string programName, tinygltf::Scene* scene)
@@ -226,15 +159,63 @@ material* materialFromGltf(std::string materialName, primitive* primitive, tinyg
 
     for (auto& value : gltfMaterial.values)
     {
-        auto values = value.second.number_array;
-        if (values.size() == 4)
-            mat->addValue(value.first, glm::vec4(values[0], values[1], values[2], values[3]));
+        auto stringValue = value.second.string_value;
+        if (!stringValue.empty())
+        {
+            auto gltfTexture = scene->textures.find(stringValue)->second;
+            auto sampler = scene->samplers.find(gltfTexture.sampler)->second;
+            auto image = scene->images.find(gltfTexture.source)->second;
 
-        if (values.size() == 3)
-            mat->addValue(value.first, glm::vec3(values[0], values[1], values[2]));
+            //auto data = std::vector<glm::vec3>();
 
-        if (values.size() == 1)
-            mat->addValue(value.first, values[0]);
+            //for (size_t i = 0; i < 211; i++)
+            //{
+            //    for (size_t j = 0; j < 211; j++)
+            //    {
+            //        data.push_back(glm::vec3(1.0, 1.0, 0.0));
+            //    }
+            //}
+
+            GLuint texId;
+            glGenTextures(1, &texId);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, texId);
+
+            auto data = new glm::vec3(1.0f, 1.0f, 0.0f);
+
+            glTexImage2D(GL_TEXTURE_2D, 0, gltfTexture.internalFormat, image.width, image.height, 0, gltfTexture.format, gltfTexture.type, &image.image[0]);
+
+            auto tex = new texture(
+                image.width,
+                image.height,
+                gltfTexture.target,
+                gltfTexture.internalFormat,
+                gltfTexture.format,
+                gltfTexture.type,
+                (byte*)(&image.image[0]),
+                sampler.wrapR,
+                sampler.minFilter,
+                sampler.magFilter);
+
+            mat->addValue(value.first, tex);
+        }
+        else
+        {
+            auto numberArray = value.second.number_array;
+
+            if (numberArray.size() == 4)
+            {
+                mat->addValue(value.first, glm::vec4(numberArray[0], numberArray[1], numberArray[2], numberArray[3]));
+            }
+            else if (numberArray.size() == 3)
+            {
+                mat->addValue(value.first, glm::vec3(numberArray[0], numberArray[1], numberArray[2]));
+            }
+            else if (numberArray.size() == 1)
+            {
+                mat->addValue(value.first, numberArray[0]);
+            }
+        }
     }
 
     return mat;

@@ -130,6 +130,12 @@ void program::setUniform(std::string name, glm::mat4 value)
     glUniformMatrix4fv(location, 1, GL_FALSE, &value[0][0]);
 }
 
+void program::setUniform(std::string name, glm::vec2 value)
+{
+    int location = glGetUniformLocation(_id, name.c_str());
+    glUniform2f(location, value.x, value.y);
+}
+
 void program::setUniform(std::string name, glm::vec3 value)
 {
     int location = glGetUniformLocation(_id, name.c_str());
@@ -140,6 +146,17 @@ void program::setUniform(std::string name, glm::vec4 value)
 {
     int location = glGetUniformLocation(_id, name.c_str());
     glUniform4f(location, value.x, value.y, value.z, value.w);
+}
+
+void program::bindTextureToUniform(std::string name, texture* value)
+{
+    int location = glGetUniformLocation(_id, name.c_str());
+    GLuint texId;
+    glGenTextures(1, &texId);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texId);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, value->internalFormat, value->w, value->h, 0, value->dataFormat, value->dataType, value->data);
 }
 
 int32_t program::getAttributeLocation(std::string name)

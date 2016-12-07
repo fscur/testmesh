@@ -20,26 +20,6 @@ shadingTechnique::shadingTechnique(
     }
 
     createVao();
-
-    //for (auto& vbo : vbos)
-    //{
-    //    vbo.bind();
-    //    vbo->setLocation();
-    //    vbo->
-
-    //}
-
-    //
-
-    //glBindBuffer(normalsBufferView.target, normalsVbo);
-    //glEnableVertexAttribArray(normalsLocation);
-    //glVertexAttribPointer(normalsLocation, 3, normalsAcessor.componentType, GL_FALSE, normalsAcessor.byteStride, 0);
-
-    //glBindBuffer(verticesBufferView.target, verticesVbo);
-    //glEnableVertexAttribArray(verticesLocation);
-    //glVertexAttribPointer(verticesLocation, 3, verticesAcessor.componentType, GL_FALSE, verticesAcessor.byteStride, 0);
-
-    //glBindBuffer(indicesBufferView.target, indicesEbo);
 }
 
 void shadingTechnique::createVao()
@@ -109,6 +89,9 @@ void shadingTechnique::sortParameter(std::string parameterName, techniqueParamet
             case parameterType::TYPE_UNSIGNED_INT:
                 _uintUniformParameters.push_back(new uniformParameter<uint32_t>(parameterName, uniform.uniformName, parameter->semantic));
                 return;
+            case parameterType::TYPE_VEC2:
+                _vec2UniformParameters.push_back(new uniformParameter<glm::vec2>(parameterName, uniform.uniformName, parameter->semantic));
+                return;
             case parameterType::TYPE_VEC3:
                 _vec3UniformParameters.push_back(new uniformParameter<glm::vec3>(parameterName, uniform.uniformName, parameter->semantic));
                 return;
@@ -120,6 +103,9 @@ void shadingTechnique::sortParameter(std::string parameterName, techniqueParamet
                 return;
             case parameterType::TYPE_MAT4:
                 _mat4UniformParameters.push_back(new uniformParameter<glm::mat4>(parameterName, uniform.uniformName, parameter->semantic));
+                return;
+            case parameterType::TYPE_SAMPLER2D:
+                _textureUniformParameters.push_back(new uniformParameter<texture*>(parameterName, uniform.uniformName, parameter->semantic));
                 return;
             default:
                 break;
@@ -135,6 +121,9 @@ void shadingTechnique::sortParameter(std::string parameterName, techniqueParamet
             {
             case parameterType::TYPE_UNSIGNED_INT:
                 _uintAttributeParameters.push_back(new attributeParameter<uint32_t>(parameterName, attribute.attributeName, parameter->semantic));
+                return;
+            case parameterType::TYPE_VEC2:
+                _vec2AttributeParameters.push_back(new attributeParameter<glm::vec2>(parameterName, attribute.attributeName, parameter->semantic));
                 return;
             case parameterType::TYPE_VEC3:
                 _vec3AttributeParameters.push_back(new attributeParameter<glm::vec3>(parameterName, attribute.attributeName, parameter->semantic));
@@ -272,6 +261,29 @@ void shadingTechnique::bindValue(std::string parameterName, glm::mat4 value)
     throw new std::exception("Parameter not found");
 }
 
+void shadingTechnique::bindValue(std::string parameterName, texture* value)
+{
+    for (auto& uniformParameter : _textureUniformParameters)
+    {
+        if (uniformParameter->parameterName == parameterName)
+        {
+            uniformParameter->uniformValue = value;
+            return;
+        }
+    }
+
+    for (auto& attributeParameter : _textureAttributeParameters)
+    {
+        if (attributeParameter->parameterName == parameterName)
+        {
+            attributeParameter->attributeValue = value;
+            return;
+        }
+    }
+
+    throw new std::exception("Parameter not found");
+}
+
 void shadingTechnique::bindSemantic(parameterSemantic semantic, glm::vec3 value)
 {
     for (auto& uniformParameter : _vec3UniformParameters)
@@ -397,6 +409,9 @@ void shadingTechnique::bind()
     for (auto& uniformParameter : _uintUniformParameters)
         _program->setUniform(uniformParameter->uniformName, uniformParameter->uniformValue);
 
+    for (auto& uniformParameter : _vec2UniformParameters)
+        _program->setUniform(uniformParameter->uniformName, uniformParameter->uniformValue);
+
     for (auto& uniformParameter : _vec3UniformParameters)
         _program->setUniform(uniformParameter->uniformName, uniformParameter->uniformValue);
 
@@ -408,6 +423,9 @@ void shadingTechnique::bind()
 
     for (auto& uniformParameter : _mat4UniformParameters)
         _program->setUniform(uniformParameter->uniformName, uniformParameter->uniformValue);
+
+    for (auto& uniformParameter : _textureUniformParameters)
+        _program->bindTextureToUniform(uniformParameter->uniformName, uniformParameter->uniformValue);
 
     glBindVertexArray(_vao);
 }

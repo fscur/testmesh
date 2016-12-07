@@ -64,6 +64,7 @@ public:
     void setUniform(std::string name, glm::vec2 value);
     void setUniform(std::string name, glm::vec3 value);
     void setUniform(std::string name, glm::vec4 value);
+    void bindTextureToUniform(std::string name, texture * value);
     int32_t getAttributeLocation(std::string name);
     void setUniform(std::string name, bool value);
     void setUniform(std::string name, int value);

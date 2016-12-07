@@ -38,6 +38,7 @@ void screen::initScene()
 void screen::importGltf()
 {
     _scene = importer::importScene(R"(..\glTF\sampleModels\Box\glTF\Box.gltf)");
+    // _scene = importer::importScene(R"(..\glTF\sampleModels\BoxTextured\glTF\BoxTextured.gltf)");
     _camera = _scene->getCamera();
 }
 
